@@ -76,10 +76,10 @@ PROCEDURE ParseEBNF ( source : StringT; VAR ast : AstT; VAR status : Status );
  * ---------------------------------------------------------------------------
  * Passes back  statistics of a  prior call  to procedure ParseEBNF.  If there
  * was no prior call to ParseEBNF,  Failure is passed in status  and  the data
- * passed in statistics is invalid and meaningless.
+ * passed in stats is invalid and meaningless.
  * ---------------------------------------------------------------------------
  *)
-PROCEDURE GetStats ( stats : Statics; VAR status : Status );
+PROCEDURE GetStats ( stats : Statistics; VAR status : Status );
 
 
 END Parser.
