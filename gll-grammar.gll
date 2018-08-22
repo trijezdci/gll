@@ -1,0 +1,322 @@
+/* Grammar Tool for LL(1) Grammars
+ *
+ * Copyright (C) 2015 Benjamin Kowarsch
+ *
+ * Synopsis
+ *
+ * GLL is a tool to verify and visualise LL(1) grammars.  It parses EBNF
+ * specifications of grammars, calculates FIRST and FOLLOW sets, reports
+ * any LL(1) violations and generates (railroad) syntax diagrams.
+ *
+ * File
+ *
+ * grammar.gll
+ *
+ * EBNF grammar of GLL input files.
+ *
+ * License
+ *
+ * GLL is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Lesser General Public License Version 2 (LGPL2) as
+ * published by the Free Software Foundation.
+ *
+ * GLL is distributed in the hope that it will be useful,  but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  Refer to the license for details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with GLL.  If not, visit <http://www.gnu.org/licenses/>.
+ */
+
+grammar gll;
+
+/*** Reserved Words ***/
+
+reserved
+  GRAMMAR = 'grammar',
+  RESERVED = 'reserved',
+  ALIAS = 'alias',
+  ENDG = 'endg',
+  EOF = 'EOF' ;
+
+
+/*** Non-Terminal Symbols ***/
+
+/* Grammar Specification */
+
+specification :=
+  GRAMMAR ident ';' ( definition ';' )+ ENDG ident '.'
+  ;
+
+
+/* Identifier */
+
+ident :=
+  NonTerminalIdent | TerminalIdent
+  ;
+
+
+/* Definition */
+
+definition :=
+  RESERVED reswordList |
+  ALIAS aliasDef |
+  nonTerminalDef |
+  terminalDef |
+  fragmentDef
+  ;
+
+
+/* Reserved Word Definition List */
+
+reswordList :=
+  reswordDef ( ',' reswordDef )*
+  ;
+
+
+/* Reserved Word Definition */
+
+reswordDef :=
+  ReswordIdent ( '=' String )?
+  ;
+
+
+/* Alias Definition */
+
+aliasDef :=
+  nonTermAliasDef | termAliasDef
+  ;
+
+
+/* Non-Terminal Alias Definition */
+
+nonTermAliasDef :=
+  nonTermAliasList '=' ident
+  ;
+
+
+/* Non-Terminal Alias List */
+
+nonTermAliasList :=
+  NonTerminalIdent ( ',' NonTerminalIdent )*
+  ;
+
+
+/* Terminal Alias Definition */
+
+termAliasDef :=
+  terminalAliasList '=' ( TerminalIdent | literal )
+  ;
+
+
+/* Terminal Alias List */
+
+terminalAliasList :=
+  TerminalIdent ( ',' TerminalIdent )*
+  ;
+
+
+/* literal */
+
+literal :=
+  String | QuotedLowerLetter | QuotedUpperLetter |
+  QuotedDigit | QuotedNonAlphaNum | CharCode | EOF
+  ;
+
+
+/* Non-Terminal Definition */
+
+nonTerminalDef :=
+  NonTerminalIdent ':=' expression+
+  ;
+
+
+/* Expression */
+
+expression :=
+  term ( '|' term )*
+  ;
+
+
+/* Term */
+
+term :=
+  factor ( '*' | '+' | '?' )? | literalOrRange
+  ;
+
+
+/* Factor */
+
+factor :=
+  NonTerminalIdent | TerminalIdent | ReswordIdent | '(' expression+ ')'
+  ;
+
+
+/* Terminal Definition */
+
+terminal :=
+  TerminalIdent ':=' terminalExpression+
+  ;
+
+
+/* Terminal Expression */
+
+terminalExpression :=
+ terminalTerm ( '|' terminalTerm )*
+ ;
+
+
+/* Terminal Term */
+
+terminalTerm :=
+  terminalFactor ( '*' | '+' | '?' )? | literalOrRange
+  ;
+
+
+/* Terminal Factor */
+
+terminalFactor :=
+  TerminalIdent | '(' terminalExpression+ ')'
+
+
+/* Terminal Fragment Definition */
+
+fragmentDef :=
+  '.' terminalDef
+  ;
+
+
+/* Literal Or Range Thereof */
+
+literalOrRange :=
+  String | quotedLowerCharOrRange | quotedUpperCharOrRange |
+  quotedDigitOrRange | charCodeOrRange | QuotedAlphaNum | EOF
+  ;
+
+
+/* Quoted Lowercase Letter Or Range Thereof */
+
+quotedLowerLetterOrRange :=
+  QuotedLowerLetter ( '..' QuotedLowerLetter )?
+  ;
+
+
+/* Quoted Uppercase Letter Or Range Thereof */
+
+quotedUpperLetterOrRange :=
+  QuotedUpperLetter ( '..' QuotedUpperLetter )?
+  ;
+
+
+/* Quoted Decimal Digit Or Range Thereof */
+
+quotedDigitOrRange :=
+  QuotedDigit ( '..' QuotedDigit )?
+  ;
+
+
+/* Character Code Or Range Thereof */
+
+charCodeOrRange :=
+  CharCode ( '..' CharCode )?
+  ;
+
+
+/*** Terminal Symbols ***/
+
+/* Non-Terminal Identifier */
+
+NonTerminalIdent :=
+  LowerLetter ( LowerLetter | UpperLetter | Digit )*
+  ;
+
+
+/* Terminal Identifier */
+
+TerminalIdent :=
+   UpperLetter ( LowerLetter | UpperLetter | Digit )*
+  ;
+
+
+/* Reserved Word Identifier */
+
+ReswordIdent :=
+   UpperLetter+
+  ;
+
+
+/* Lowercase Letter */
+
+.LowerLetter := 'a' .. 'z' ;
+
+
+/* Uppercase Letter */
+
+.UpperLetter := 'A' .. 'Z' ;
+
+
+/* Decimal Digit */
+
+.Digit := '0' .. '9' ;
+
+
+/* String Literal */
+
+String :=
+  "'" Character+ "'" | '"' Character+ '"'
+  ;
+
+
+/* Quotable Character */
+
+.Character := 0u20 .. 0u7E ;
+
+
+/* Quoted Lowercase Letter */
+
+QuotedLowerLetter :=
+  '"' LowerLetter '"' | "'" LowerLetter "'"
+  ;
+
+
+/* Quoted Uppercase Letter */
+
+QuotedUpperLetter :=
+  '"' UpperLetter '"' | "'" UpperLetter "'"
+  ;
+
+
+/* Quoted Decimal Digit */
+
+QuotedDigit :=
+  "'" Digit "'" | '"' Digit '"'
+  ;
+
+
+/* Quoted Non-Alphanumeric Printable */
+
+QuotedNonAlphaNum :=
+  "'" NonAlphaNum "'" | '"' NonAlphaNum '"'
+  ;
+
+
+/* Non-Alphanumeric Printable */
+
+.NonAlphaNum :=
+  ' ' | /* Space */
+  '!' | '#' | '$' | '%' | '&' | '(' | ')' | '*' | '+' | ',' |
+  '-' | '.' | '/' | ':' | ';' | '<' | '=' | '>' | '?' | '@' |
+  '[' | '\' | ']' | '^' | '_' | '`' | '{' | '|' | '}' | '~'
+  ;
+
+
+/* Character Code Literal */
+
+CharCode :=
+  '0u' ( Digit | 'A' .. 'F' )+
+  ;
+
+
+endg gll.
+
+/* END OF FILE */
