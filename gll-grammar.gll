@@ -36,8 +36,7 @@ reserved
   GRAMMAR = 'grammar',
   RESERVED = 'reserved',
   ALIAS = 'alias',
-  ENDG = 'endg',
-  EOF = 'EOF' ;
+  ENDG = 'endg';
 
 
 /*** Non-Terminal Symbols ***/
@@ -45,8 +44,14 @@ reserved
 /* Grammar Specification */
 
 specification :=
-  GRAMMAR ident ';' ( definition ';' )+ ENDG ident '.'
+  GRAMMAR grammarIdent ';'
+  ( RESERVED reswordList )?
+  ( definition ';' )+
+  ENDG grammarIdent '.'
+  EndOfFile
   ;
+
+alias grammarIdent = ident;
 
 
 /* Identifier */
@@ -59,11 +64,11 @@ ident :=
 /* Definition */
 
 definition :=
-  RESERVED reswordList |
   ALIAS aliasDef |
   nonTerminalDef |
   terminalDef |
-  fragmentDef
+  fragmentDef |
+  nonSemanticDef
   ;
 
 
@@ -91,7 +96,7 @@ aliasDef :=
 /* Non-Terminal Alias Definition */
 
 nonTermAliasDef :=
-  nonTermAliasList '=' ident
+  nonTermAliasList '=' NonTerminalIdent
   ;
 
 
@@ -120,7 +125,7 @@ terminalAliasList :=
 
 literal :=
   String | QuotedLowerLetter | QuotedUpperLetter |
-  QuotedDigit | QuotedNonAlphaNum | CharCode | EOF
+  QuotedDigit | QuotedNonAlphaNum | CharCode
   ;
 
 
@@ -154,8 +159,8 @@ factor :=
 
 /* Terminal Definition */
 
-terminal :=
-  TerminalIdent ':=' terminalExpression+
+terminalDef :=
+  TerminalIdent ':=' ( terminalExpression+ | '<platform dependent>' )
   ;
 
 
@@ -177,6 +182,7 @@ terminalTerm :=
 
 terminalFactor :=
   TerminalIdent | '(' terminalExpression+ ')'
+  ;
 
 
 /* Terminal Fragment Definition */
@@ -186,11 +192,18 @@ fragmentDef :=
   ;
 
 
+/* Non-Semantic Symbol Definition */
+
+nonSemanticDef :=
+  '*' terminalDef
+  ;
+
+
 /* Literal Or Range Thereof */
 
 literalOrRange :=
   String | quotedLowerCharOrRange | quotedUpperCharOrRange |
-  quotedDigitOrRange | charCodeOrRange | QuotedAlphaNum | EOF
+  quotedDigitOrRange | charCodeOrRange | QuotedAlphaNum
   ;
 
 
@@ -315,6 +328,45 @@ QuotedNonAlphaNum :=
 CharCode :=
   '0u' ( Digit | 'A' .. 'F' )+
   ;
+
+
+/* End of File */
+
+EndOfFile := <platform dependent>;
+
+
+/*** Non-Semantic Symbols ***/
+
+/* Block Comment */
+
+*BlockComment :=
+  '/*' ( Printable | Tab | Whitespace | Comment | EndOfLine )* '*/'
+  ;
+
+/* Printable */
+
+.Printable := 0u20 .. 0u7E;
+
+
+/* Tabulator */
+
+.Tab := 0u9;
+
+
+/* Whitespace */
+
+.Whitespace := 0u20;
+
+
+/* End of Line */
+
+.EndOfLine :=
+  CR LF? | LF
+  ;
+
+.CR := 0uD;
+
+.LF := 0uA;
 
 
 endg gll.
