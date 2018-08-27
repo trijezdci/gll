@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE language SYSTEM "language.dtd">
+<language name="EBNF (GLL)" mimetype="text/x-ebnf" version="1"
+  kateversion="2.2" section="Sources" priority="3" extensions="*.ebnf;*.gll"
+  casesensitive="1"  author="B. Kowarsch (trijezdci@github)"  license="MIT">
+<!--
+  *****************************************************************************
+  GLL EBNF syntax highlighting profile for Kate
+
+  Copyright (C) 2018 Benjamin Kowarsch
+  
+  Licensed under the MIT license <https://opensource.org/licenses/MIT>  
+
+  The authoritative grammar for GLL EBNF is at:
+  
+  https://github.com/trijezdci/gll/blob/master/gll-grammar.gll
+  *****************************************************************************
+-->
+  <highlighting>
+    <list name="workaround">
+      <!-- BUG: Kate ignores first entry in context 'Normal' -->
+      <!-- WORKAROUND: Use the name of this dummy list as first entry -->
+      <item>???</item> <!-- use '???' in source to test/verify this bug -->
+    </list>
+
+    <!-- Keywords -->
+    <list name="keywords">
+      <item>grammar</item>
+      <item>endg</item>
+    </list>
+
+    <list name="reserved">
+      <item>reserved</item>
+    </list>
+
+    <list name="alias">
+      <item>alias</item>
+    </list>
+
+    <list name="workaround">
+      <item>???</item>
+    </list>
+
+    <contexts>
+      <context attribute="Plain" lineEndContext="#stay">
+        <!-- BUG: first entry is ignored, leave Dummy at first position -->
+        <keyword attribute="Dummy" context="#stay" String="workaround"/>
+
+        <!-- Keywords -->
+        <keyword attribute="Keyword" context="#stay" String="keywords"/>
+
+        <!-- Kewword 'reserved' starts reserved word definition list -->
+        <keyword attribute="Keyword" context="ResWordList"
+          String="reserved" beginRegion="FoldableList"/>
+
+        <!-- Keyword 'alias' starts alias definition -->
+        <keyword attribute="Keyword" context="AliasDefHeader" String="alias"/>
+
+        <!-- Start of Pragma -->
+        <StringDetect attribute="Pragma" context="PragmaBody" String="/*$"/>
+
+        <!-- Start of Comment -->
+        <Detect2Chars attribute="Comment" context="CommentBody"
+          char="/" char1="*" beginRegion="FoldableComment"/>
+
+        <!-- Non-Terminal Definition -->
+        <RegExpr attribute="NonTerminal Definition"
+          context="#stay" String="^[ \t]*[a-z][A-Za-z0-9]*(?=[ \t]*:=)"/>
+
+        <!-- Terminal Definition -->
+        <RegExpr attribute="Terminal Definition"
+          context="#stay" String="^[ \t]*[A-Z][A-Za-z0-9]*(?=[ \t]*:=)"/>
+
+        <!-- Fragment Definition -->
+        <RegExpr attribute="Fragment Definition"
+          context="stay" String="^[ \t]*\.[A-Z][A-Za-z0-9]*(?=[ \t]*:=)"/>
+
+        <!-- Non-Semantic Definition -->
+        <RegExpr attribute="NonSemantic Definition"
+          context="stay" String="^[ \t]*\*[A-Z][A-Za-z0-9]*(?=[ \t]*:=)"/>
+
+        <!-- Punctuation -->
+        <DetectChar attribute="Punctuation" context="#stay" char=";"/>
+        <DetectChar attribute="Punctuation" context="#stay" char="."/>
+
+        <!-- Definition Body -->
+        <Detect2Chars attribute="Punctuation"
+          context="DefinitionBody" char=":" char1="=" beginRegion="FoldableBody"/>
+      </context>
+
+      <!-- Reserved Word List Body -->
+      <context name="ResWordList"
+        attribute="Plain" lineEndContext="#stay">
+
+        <!-- Start of Pragma -->
+        <StringDetect attribute="Pragma" context="PragmaBody" String="/*$"/>
+
+        <!-- Start of Comment -->
+        <Detect2Chars attribute="Comment" context="CommentBody"
+          char="/" char1="*" beginRegion="FoldableComment"/>
+
+        <!-- Start of Double-Quoted String Literal -->
+        <DetectChar attribute="String"
+          context="DoubleQuotedString" char="&quot;"/>
+
+        <!-- Start of Single-Quoted String Literal -->
+        <DetectChar attribute="String"
+          context="SingleQuotedString" char="'"/>
+
+        <!-- Reserved Word Definition -->
+        <RegExpr attribute="ResWord Definition"
+          context="#stay" String="\b[A-Z]+\b"/>
+
+        <!-- Punctuation -->
+        <DetectChar attribute="Punctuation" context="#stay" char="="/>
+        <DetectChar attribute="Punctuation" context="#stay" char=","/>
+
+        <!-- End of Reserved Word List -->
+        <DetectChar attribute="Punctuation"
+          context="#pop" char=";" endRegion="FoldableList"/>
+      </context>
+
+      <!-- Alias Definition Header, left side of '=' -->
+      <context name="AliasDefHeader"
+        attribute="Plain" lineEndContext="#stay">
+
+        <!-- Start of Pragma -->
+        <StringDetect attribute="Pragma" context="PragmaBody" String="/*$"/>
+
+        <!-- Start of Comment -->
+        <Detect2Chars attribute="Comment" context="CommentBody"
+          char="/" char1="*" beginRegion="FoldableComment"/>
+
+        <!-- Reserved Word Alias Definition -->
+        <RegExpr attribute="ResWord Definition"
+          context="#stay" String="\b[A-Z]+\b"/>
+
+        <!-- Non-Terminal Alias -->
+        <RegExpr attribute="NonTerminal Definition"
+          context="#stay" String="\b[a-z]+[A-Za-z0-9]*\b"/>
+
+        <!-- Terminal Alias -->
+        <RegExpr attribute="Terminal Definition"
+          context="#stay" String="\b[A-Z][a-z]+[A-Za-z0-9]*\b"/>
+
+         <!-- Punctuation -->
+        <DetectChar attribute="Punctuation" context="#stay" char=","/>
+
+        <!-- Start of Alias Definition Body -->
+        <DetectChar attribute="Punctuation" context="AliasDefBody" char="="/>
+
+        <!-- Premature End of Alias Definition, if body is missing -->
+        <DetectChar attribute="Punctuation"
+          context="#pop" char=";"/>
+      </context>
+
+      <!-- Alias Definition Body, right side of '=' -->
+      <context name="AliasDefBody"
+        attribute="Plain" lineEndContext="#stay">
+
+        <!-- Start of Pragma -->
+        <StringDetect attribute="Pragma" context="PragmaBody" String="/*$"/>
+
+        <!-- Start of Comment -->
+        <Detect2Chars attribute="Comment" context="CommentBody"
+          char="/" char1="*" beginRegion="FoldableComment"/>
+
+        <!-- Start of Double-Quoted String Literal -->
+        <DetectChar attribute="String"
+          context="DoubleQuotedString" char="&quot;"/>
+
+        <!-- Start of Single-Quoted String Literal -->
+        <DetectChar attribute="String"
+          context="SingleQuotedString" char="'"/>
+
+        <!-- Reserved Word Reference -->
+        <RegExpr attribute="ResWord Reference"
+          context="#stay" String="\b[A-Z]+\b"/>
+
+        <!-- Non-Terminal Reference -->
+        <RegExpr attribute="NonTerminal Reference"
+          context="#stay" String="\b[a-z]+[A-Za-z0-9]*\b"/>
+
+        <!-- Terminal Reference -->
+        <RegExpr attribute="Terminal Reference"
+          context="#stay" String="\b[A-Z][a-z]+[A-Za-z0-9]*\b"/>
+
+        <!-- Character Code Literal -->
+        <RegExpr attribute="CharCode"
+          context="#stay" String="\b0u[A-F0-9]+\b"/>
+
+        <!-- End of Alias Definition, terminates both body and header -->
+        <DetectChar attribute="Punctuation"
+          context="#pop#pop" char=";"/>
+      </context>
+
+      <!-- Definition Body, right side of ':=',
+           for Non-Terminals, Terminals, Fragments and Non-Semantic Symbols -->
+      <context name="DefinitionBody"
+        attribute="Plain" lineEndContext="#stay">
+
+        <!-- Start of Pragma -->
+        <StringDetect attribute="Pragma" context="PragmaBody" String="/*$"/>
+
+        <!-- Start of Comment -->
+        <Detect2Chars attribute="Comment" context="CommentBody"
+          char="/" char1="*" beginRegion="FoldableComment"/>
+        
+        <!-- Start of Double-Quoted String Literal -->
+        <DetectChar attribute="String"
+          context="DoubleQuotedString" char="&quot;"/>
+
+        <!-- Start of Single-Quoted String Literal -->
+        <DetectChar attribute="String"
+          context="SingleQuotedString" char="'"/>
+
+        <!-- Reserved Word Reference -->
+        <RegExpr attribute="ResWord Reference"
+          context="#stay" String="\b[A-Z]+\b"/>
+
+        <!-- Non-Terminal Reference -->
+        <RegExpr attribute="NonTerminal Reference"
+          context="#stay" String="\b[a-z][A-Za-z0-9]*\b"/>
+
+        <!-- Terminal Reference -->
+        <RegExpr attribute="Terminal Reference"
+          context="#stay" String="\b[A-Z]+[a-z]+[A-Za-z0-9]*\b"/>
+
+        <!-- Character Code -->
+        <RegExpr attribute="CharCode"
+          context="#stay" String="\b0u[A-F0-9]+\b"/>
+
+        <!-- Alternative -->
+        <DetectChar
+          attribute="Punctuation" context="#stay" char="|"/>
+          
+        <!-- Kleene Operators -->
+        <DetectChar
+          attribute="Punctuation" context="#stay" char="?"/>
+        <DetectChar
+          attribute="Punctuation" context="#stay" char="*"/>
+        <DetectChar
+          attribute="Punctuation" context="#stay" char="+"/>
+
+        <!-- Grouping -->
+        <DetectChar
+          attribute="Punctuation" context="#stay" char="("/>
+        <DetectChar
+          attribute="Punctuation" context="#stay" char=")"/>
+
+        <!-- Range -->
+        <Detect2Chars
+          attribute="Punctuation" context="#stay" char="." char1="."/>
+
+        <!-- Platform Dependent -->
+        <StringDetect attribute="Annotation"
+          context="#stay" String="&lt;platform dependent&gt;"/>
+
+        <!-- End of Definition Body -->
+        <DetectChar attribute="Punctuation"
+          context="#pop" char=";" endRegion="FoldableBody"/>
+      </context>
+
+      <!-- Pragma Body -->
+      <context name="PragmaBody" attribute="Pragma" lineEndContext="#stay">
+        <!-- End of Body -->
+        <Detect2Chars attribute="Pragma" context="#pop" char="*" char1="/"/>
+      </context>
+
+      <!-- Comment Body -->
+      <context name="CommentBody" attribute="Comment" lineEndContext="#stay">
+        <!-- End of Body -->
+        <Detect2Chars attribute="Comment"
+          context="#pop" char="*" char1="/" endRegion="FoldableComment"/>
+      </context>
+
+      <!-- Double-Quoted String Literal Body -->
+      <context name="DoubleQuotedString" attribute="String" lineEndContext="#pop">
+        <!-- End of Literal -->
+        <DetectChar attribute="String" context="#pop" char="&quot;"/>
+      </context>
+
+      <!-- Single-Quoted String Literal Body -->
+      <context name="SingleQuotedString" attribute="String" lineEndContext="#pop">
+        <!-- End of Literal -->
+        <DetectChar attribute="String" context="#pop" char="'"/>
+      </context>
+    </contexts>
+
+    <itemDatas>
+      <!-- Style for Plain Text -->
+      <itemData name="Plain"
+        defStyleNum="dsNormal" bold="0" italic="0"/>
+
+      <!-- Style for Keywords -->
+      <itemData name="Keyword"
+        defStyleNum="dsKeyword" bold="1" italic="0"/>
+
+      <!-- Style for Reserved Word Definitions -->
+      <itemData name="ResWord Definition"
+        defStyleNum="dsFunction" bold="1" italic="0"/>
+
+      <!-- Style for Reserved Word References -->
+      <itemData name="ResWord Reference"
+        defStyleNum="dsNormal" bold="1" italic="0"/>
+
+      <!-- Style for Non-Terminal Definitions -->
+      <itemData name="NonTerminal Definition"
+        defStyleNum="dsFunction" bold="1" italic="0"/>
+
+      <!-- Style for Non-Terminal References -->
+      <itemData name="NonTerminal Reference"
+        defStyleNum="dsNormal" bold="0" italic="0"/>
+
+      <!-- Style for Terminal Definitions -->
+      <itemData name="Terminal Definition"
+        defStyleNum="dsFunction" bold="1" italic="0"/>
+
+      <!-- Style for Terminal References -->
+      <itemData name="Terminal Reference"
+        defStyleNum="dsNormal" bold="0" italic="0"/>
+
+      <!-- Style for Fragment Definitions -->
+      <itemData name="Fragment Definition"
+        defStyleNum="dsFunction" bold="1" italic="1"/>
+
+      <!-- Style for Non-Semantic Definitions -->
+      <itemData name="NonSemantic Definition"
+        defStyleNum="dsFunction" bold="1" italic="1"/>
+
+      <!-- Style for Quoted Literals -->
+      <itemData name="String"
+        defStyleNum="dsString" bold="0" italic="0"/>
+
+      <!-- Style for Character Code Literals -->
+      <itemData name="CharCode"
+        defStyleNum="dsChar" bold="0" italic="0"/>
+      
+      <!-- Style for Punctuation -->
+      <itemData name="Punctuation"
+        defStyleNum="dsOperator" bold="1" italic="0"/>
+
+      <!-- Style for Annotation -->
+      <itemData name="Annotation"
+        defStyleNum="dsAlert" bold="0" italic="0"/>
+
+      <!-- Style for Pragmas -->
+      <itemData name="Pragma"
+        defStyleNum="dsComment" bold="1" italic="0"/>
+
+      <!-- Style for Comments -->
+      <itemData name="Comment"
+        defStyleNum="dsComment" bold="0" italic="1"/>
+
+      <!-- Dummy style for testing -->
+      <itemData name="Dummy" defStyleNum="dsError"/>
+    </itemDatas>
+  </highlighting>
+
+  <general>
+    <keywords casesensitive="1"/>
+    <comments>
+      <comment name="multiLine" start="/*" end="*/"/>
+    </comments>
+  </general>
+</language>
+
