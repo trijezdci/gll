@@ -96,28 +96,26 @@ aliasDef :=
 /* Non-Terminal Alias Definition */
 
 nonTermAliasDef :=
-  nonTermAliasList '=' NonTerminalIdent
+  NonTermAlias ( ',' NonTermAlias )* '=' NonTermAliasValue
   ;
 
-
-/* Non-Terminal Alias List */
-
-nonTermAliasList :=
-  NonTerminalIdent ( ',' NonTerminalIdent )*
-  ;
+alias NonTermAlias, NonTermAliasValue = NonTerminalIdent;
 
 
 /* Terminal Alias Definition */
 
 termAliasDef :=
-  terminalAliasList '=' ( TerminalIdent | literal )
+  TerminalAlias ( ',' TerminalAlias )* '=' termAliasValue
   ;
 
+alias TerminalAlias = TerminalIdent;
 
-/* Terminal Alias List */
 
-terminalAliasList :=
-  TerminalIdent ( ',' TerminalIdent )*
+
+/* Terminal Alias Value */
+
+termAliasValue :=
+  TerminalIdent | literal
   ;
 
 
@@ -132,14 +130,21 @@ literal :=
 /* Non-Terminal Definition */
 
 nonTerminalDef :=
-  NonTerminalIdent ':=' expression+
+  NonTerminalIdent ':=' expression
   ;
 
 
 /* Expression */
 
 expression :=
-  term ( '|' term )*
+  termList ( '|' termList )*
+  ;
+
+
+/* Term List */
+
+termList :=
+  term+
   ;
 
 
@@ -153,22 +158,29 @@ term :=
 /* Factor */
 
 factor :=
-  NonTerminalIdent | TerminalIdent | ReswordIdent | '(' expression+ ')'
+  NonTerminalIdent | TerminalIdent | ReswordIdent | '(' expression ')'
   ;
 
 
 /* Terminal Definition */
 
 terminalDef :=
-  TerminalIdent ':=' ( terminalExpression+ | '<platform dependent>' )
+  TerminalIdent ':=' ( terminalExpression | '<platform dependent>' )
   ;
 
 
 /* Terminal Expression */
 
 terminalExpression :=
- terminalTerm ( '|' terminalTerm )*
+ terminalTermList ( '|' terminalTermList )*
  ;
+
+
+/* Terminal Term List */
+
+terminalTermList :=
+  terminalTerm+
+  ;
 
 
 /* Terminal Term */
@@ -181,7 +193,7 @@ terminalTerm :=
 /* Terminal Factor */
 
 terminalFactor :=
-  TerminalIdent | '(' terminalExpression+ ')'
+  TerminalIdent | '(' terminalExpression ')'
   ;
 
 
