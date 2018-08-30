@@ -260,7 +260,7 @@ BEGIN
     IF matchSet(FIRST(), lookahead.token) THEN
       astNode := aliasDef(lookahead)
     ELSE (* resync *)
-      skipToMatchTokenOrSet(Token.Endg, FIRST(definition))
+      lookahead := skipToMatchTokenOrSet(Token.Endg, FIRST(definition))
     END; (* IF *)
 
   (* nonTerminalDef | *)
@@ -276,7 +276,6 @@ BEGIN
     astNode := fragmentDef(lookahead)
 
   ELSE (* unexpected symbol *)
-
 
     TO DO : (* report error *)
 
@@ -315,7 +314,7 @@ BEGIN
     IF matchSet(FIRST(ReswordDef), lookahead.token) THEN
       astNode := reswordDef(lookahead)
     ELSE (* resync *)
-      skipToMatchTokenOrSetOrSet
+      lookahead := skipToMatchTokenOrSetOrSet
         (Token.Comma, FIRST(ReswordDef), FOLLOW(ReswordDef))
     END (* IF *)
   END; (* WHILE *)
@@ -356,7 +355,7 @@ BEGIN
       value := lookahead.lexeme;
       lookahead := Lexer.consumeSym(lexer)
     ELSE (* resync *)
-      skipToMatchSet(FOLLOW(ReswordDef))
+      lookahead := skipToMatchSet(FOLLOW(ReswordDef))
     END (* IF *)
   END; (* IF *)
 
@@ -431,7 +430,7 @@ BEGIN
     AstQueue.Enqueue(aliasList, lookahead.lexeme);
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
-    skipToMatchTokenOrSet(Token.Comma, FOLLOW(NonTermAliasDef))
+    lookahead := skipToMatchTokenOrSet(Token.Comma, FOLLOW(NonTermAliasDef))
   END; (* IF *)
 
   (* ( ',' NonTermAlias )* *)
@@ -443,7 +442,7 @@ BEGIN
     IF matchToken(Token.NonTerminalIdent, lookahead.token) THEN
       AstQueue.Enqueue(aliasList, lookahead.lexeme)
     ELSE (* resync *)
-      skipToMatchTokenOrSet(Token.Comma, Token.Equal)
+      lookahead := skipToMatchTokenOrSet(Token.Comma, Token.Equal)
     END (* IF *)
   END; (* WHILE *)
 
@@ -451,7 +450,8 @@ BEGIN
   IF matchToken(Token.Equal, lookahead.token) THEN
     lookahead := Lexer.consumeSym(lookahead)
   ELSE (* resync *)
-    skipToMatchTokenOrSet(Token.NonTerminalIdent, FOLLOW(NonTermAliasDef))
+    lookahead := skipToMatchTokenOrSet
+      (Token.NonTerminalIdent, FOLLOW(NonTermAliasDef))
   END; (* IF *)
 
   value := NIL;
@@ -461,7 +461,7 @@ BEGIN
     value := lookahead.lexeme;
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
-    skipToMatchSet(FOLLOW(NonTermAliasDef))
+    lookahead := skipToMatchSet(FOLLOW(NonTermAliasDef))
   END; (* IF *)
 
   (* build ast node *)
@@ -495,7 +495,7 @@ BEGIN
     AstQueue.Enqueue(aliasList, lookahead.lexeme);
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
-    skipToMatchTokenOrSet(Token.Comma, FOLLOW(TermAliasDef))
+    lookahead := skipToMatchTokenOrSet(Token.Comma, FOLLOW(TermAliasDef))
   END; (* IF *)
 
   (* ( ',' TerminalAlias )* *)
@@ -507,7 +507,7 @@ BEGIN
     IF matchToken(Token.TerminalIdent, lookahead.token) THEN
       AstQueue.Enqueue(aliasList, lookahead.lexeme)
     ELSE (* resync *)
-      skipToMatchTokenOrSet(Token.Comma, Token.Equal)
+      lookahead := skipToMatchTokenOrSet(Token.Comma, Token.Equal)
     END (* IF *)
   END; (* WHILE *)
 
@@ -515,14 +515,15 @@ BEGIN
   IF matchToken(Token.Equal, lookahead.token) THEN
     lookahead := Lexer.consumeSym(lookahead)
   ELSE (* resync *)
-    skipToMatchTokenOrSet(Token.NonTerminalIdent, FOLLOW(TermAliasDef))
+    lookahead := skipToMatchTokenOrSet
+      (Token.NonTerminalIdent, FOLLOW(TermAliasDef))
   END; (* IF *)
 
   (* termAliasValue *)
   IF matchSet(FIRST(termAliasValue), lookahead.token) THEN
     value := termAliasValue(lookahead)
   ELSE (* resync *)
-    skipToMatchSet(FOLLOW(TermAliasDef));
+    lookahead := skipToMatchSet(FOLLOW(TermAliasDef));
     value := NIL
   END; (* IF *)
 
@@ -585,8 +586,9 @@ BEGIN
 
   (* String | QuotedLowerLetter | QuotedUpperLetter |
      QuotedDigit | QuotedNonAlphaNum | *)
-  IF lookahead.token = Token.CharCode THEN
+  IF lookahead.token # Token.CharCode THEN
     astNode := AST.NewTerminalNode(AstNodeType.Quoted, value)
+
   (* CharCode *)
   ELSE
     astNode := AST.NewTerminalNode(AstNodeType.CharCode, value)
@@ -602,17 +604,46 @@ END literal;
  * Private function nonTerminalDef(lookahead)
  * ---------------------------------------------------------------------------
  * nonTerminalDef :=
- *   NonTerminalIdent ':=' expression+
+ *   NonTerminalIdent ':=' expression
  *   ;
  * ---------------------------------------------------------------------------
  *)
 PROCEDURE nonTerminalDef ( VAR lookahead : SymbolT ) : AstT;
 
+VAR
+  ident : StringT;
+  astNode, expr : AstT;
+
 BEGIN
 
-  (* TO DO *)
+  (* NonTerminalIdent *)
+  IF matchToken() THEN
+    ident := lookahead.lexeme;
+    lookahead := Lexer.consumeSym(lexer)
+  ELSE (* resync *)
+    lookahead := skipToMatchTokenOrSet(Token.Assign, FIRST(Expression));
+    ident := NIL
+  END; (* IF *)
 
-  RETURN ast
+  (* ':=' *)
+  IF matchToken(Token.Assign, lookahead.token) THEN
+    lookahead := Lexer.consumeSym(lexer)
+  ELSE (* resync *)
+    lookahead := skipToMatchSetOrSet(FIRST(Expression), FOLLOW(Expression))
+  END; (* IF *)
+
+  (* expression *)
+  IF matchSet(FIRST(expression), lookahead.token) THEN
+    expr := expression(lookahead)
+  ELSE (* resync *)
+    lookahead := skipToMatchSet(FOLLOW(Expression));
+    expr := NIL
+  END; (* IF *)
+
+  (* build AST node *)
+  astNode := AST.NewNode(AstNodeType.NonTerminal, ident, expr);
+
+  RETURN astNode
 END nonTerminalDef;
 
 
@@ -620,17 +651,30 @@ END nonTerminalDef;
  * Private function expression(lookahead)
  * ---------------------------------------------------------------------------
  * expression :=
- *   term ( '|' term )*
+ *   term+
  *   ;
  * ---------------------------------------------------------------------------
  *)
 PROCEDURE expression ( VAR lookahead : SymbolT ) : AstT;
 
+VAR
+  astNode, termNode : AstT;
+  termList : AstQueueT;
+
 BEGIN
 
-  (* TO DO *)
+  AstQueue.New(exprList);
 
-  RETURN ast
+  (* term+ *)
+  WHILE inFIRST(Term, lookahead.token) DO
+    termNode := term(lookahead);
+    AstQueue.Enqueue(termList, term)
+  END; (* WHILE *)
+
+  (* build AST node *)
+  astNode := AST.NewListNode(NodeType.TermList, termList);
+
+  RETURN astNode
 END expression;
 
 
@@ -638,35 +682,141 @@ END expression;
  * Private function term(lookahead)
  * ---------------------------------------------------------------------------
  * term :=
- *   factor ( '*' | '+' | '?' )? | literalOrRange
+ *   simpleTerm ( | simpleTerm )*
  *   ;
  * ---------------------------------------------------------------------------
  *)
 PROCEDURE term ( VAR lookahead : SymbolT ) : AstT;
 
+VAR
+  astNode, simpleTermNode : AstT;
+  simpleTermList : AstQueueT;
+
 BEGIN
 
-  (* TO DO *)
+  AstQueue.New(termList);
 
-  RETURN ast
+  (* sipleTerm *)
+  simpleTermNode := simpleTerm(lookahead);
+  AstQueue.Enqueue(simpleTermList, simpleTermNode);
+
+  (* ( '|' simpleTerm )* *)
+  WHILE lookahead.token = Token.VerticalBar) DO
+    (* '|' *)
+    lookahead := Lexer.consumeSym(lexer);
+
+    (* simpleTerm *)
+    IF matchSet(FIRST(SimpleTerm), lookahead.token) THEN
+      simpleTermNode := simpleTerm(lookahead);
+      AstQueue.Enqueue(SimpleTermList, simpleTermNode)
+    ELSE (* resync *)
+      lookahead := skipToMatchTokenOrSet
+        (Token.VerticalBar, FOLLOW(simpleTerm))
+    END (* IF *)
+  END; (* WHILE *)
+
+  (* build AST node *)
+  astNode := AST.NewListNode(NodeType.Alternative, simpleTermList);
+
+  RETURN astNode
 END term;
+
+
+(* ---------------------------------------------------------------------------
+ * Private function simpleTerm(lookahead)
+ * ---------------------------------------------------------------------------
+ * simpleTerm :=
+ *   factor ( '*' | '+' | '?' )? | literalOrRange
+ *   ;
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE simpleTerm ( VAR lookahead : SymbolT ) : AstT;
+
+VAR
+  astNode, factorNode : AstT;
+
+BEGIN
+
+  (* factor ( '*' | '+' | '?' )? | *)
+  IF inFIRST(Factor, lookahead.token) THEN
+    factorNode := factor(lookahead);
+
+    (* ( '*' | '+' | '?' )? *)
+    CASE lookahead.token OF
+    (* '*' | *)
+    | Token.Asterisk :
+      astNode := AST.NewNode(AstNodeType.OptRepetition, factor)
+
+    (* '+' | *)
+    | Token.Plus :
+      astNode := AST.NewNode(AstNodeType.Repetition, factor)
+
+    (* '?' *)
+    | Token.QMark :
+      astNode := AST.NewNode(AstNodeType.Option, factor)
+    END; (* CASE *)
+
+  (* literalOrRange *)
+  ELSE
+    astNode := literalOrRange(lookahead)
+  END; (* IF *)
+
+  RETURN astNode
+END simpleTerm;
 
 
 (* ---------------------------------------------------------------------------
  * Private function factor(lookahead)
  * ---------------------------------------------------------------------------
  * factor :=
- *   NonTerminalIdent | TerminalIdent | ReswordIdent | '(' expression+ ')'
+ *   NonTerminalIdent | TerminalIdent | ReswordIdent | '(' expression ')'
  *   ;
  * ---------------------------------------------------------------------------
  *)
 PROCEDURE factor ( VAR lookahead : SymbolT ) : AstT;
 
+VAR
+  astNode : AstT;
+
 BEGIN
 
-  (* TO DO *)
+  (* NonTerminalIdent | TerminalIdent | ReswordIdent | '(' expression ')' *)
+  CASE lookahead.token OF
+  (* NonTerminalIdent | *)
+  | Token.NonTerminalIdent :
+    astNode :=
+      AST.NewTerminalNode(AstNodeType.NonTerminalIdent, lookahead.lexeme);
+    lookahead := Lexer.consumeSym(lexer)
 
-  RETURN ast
+  (* TerminalIdent |*)
+  | Token.TerminalIdent :
+    astNode :=
+      AST.NewTerminalNode(AstNodeType.TerminalIdent, lookahead.lexeme);
+    lookahead := Lexer.consumeSym(lexer)
+
+  (* ReswordIdent | *)
+  | Token.ReswordIdent :
+    astNode :=
+      AST.NewTerminalNode(AstNodeType.ReswordIdent, lookahead.lexeme);
+    lookahead := Lexer.consumeSym(lexer)
+
+  (* '(' expression ')' *)
+  ELSE
+    (* '(' *)
+    lookahead := Lexer.consumeSym(lexer);
+
+    (* expression *)
+    astNode := expression(lookahead)
+
+    (* ')' *)
+    IF matchToken(Token.RightParen) THEN
+      lookahead := Lexer.consumeSym(lexer)
+    ELSE
+      lookahead := skipToMatchSet(FOLLOW(Factor))
+    END (* IF *)
+  END; (* CASE *)
+
+  RETURN astNode
 END factor;
 
 
