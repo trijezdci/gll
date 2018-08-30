@@ -81,25 +81,25 @@ VAR
   ast : AstT;
 
 BEGIN
-  
+
   (* init statistics *)
-  
+
   statistics.lexicalWarnings := 0; statistics.lexicalErrors := 0;
   statistics.syntaxWarnings := 0; statistics.syntaxErrors := 0;
-  
+
   (* TO DO : verify filename in source *)
-  
+
   lexer := Lexer.new(source, lexerStatus);
-  
+
   (* TO DO : verify lexer status *)
-  
+
   (* pase EBNF specification *)
-  
+
   lookahead := specification(ast);
-  
+
   (* TO DO: verify lookahead *)
   (* TO DO: get lexical stats from lexer *)
-  
+
   Lexer.Release(lexer)
 
 END ParseEBNF;
@@ -126,82 +126,108 @@ END GetStats;
  * Syntax Analysis                                                          *
  * ************************************************************************ *)
 
-(* --------------------------------------------------------------------------
+(* ---------------------------------------------------------------------------
  * Specific Parsing Functions
- * ------------------------------------------------------------------------ *)
+ * ---------------------------------------------------------------------------
+ * Parsing functions represent  non-terminal  production rules in the grammar.
+ * Each function is named after the rule that it represents and the  EBNF  for
+ * the rule is given in the comment header above the function's declaration.
+ *
+ * Each function parses the tokenised input stream according to its respective
+ * production rule.  In the process  it constructs an  AST node  encoding  the
+ * parsed input,  passes the new lookahead symbol back in  parameter lookahead
+ * and returns the AST node.
+ *
+ * If any lexical or syntax errors are detected  that prevent the construction
+ * of an AST node then NIL is returned.
+ * ---------------------------------------------------------------------------
+ *)
 
 (* ---------------------------------------------------------------------------
  * Private function specification(lookahead)
  * ---------------------------------------------------------------------------
- * Parses rule  specification,  constructs its AST node,  passes the new look-
- * ahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * specification :=
- *   GRAMMAR ident ';' ( definition ';' )+ ENDG ident '.'
+ *   GRAMMAR ident ';'
+ *   ( RESERVED reswordList )?
+ *   ( definition ';' )+
+ *   ENDG ident '.'
  *   ;
  * ---------------------------------------------------------------------------
  *)
 PROCEDURE specification ( VAR lookahead : SymbolT ) : AstT;
 
 VAR
+  astNode : AstT;
   ident1, ident2 : StringT;
-  
+
 BEGIN
-  
+
   (* GRAMMAR *)
   lookahead := Lexer.consumeSym(lexer);
-  
+
   (* ident *)
   IF matchToken(Token.Ident) THEN
     ident1 = lookahead.lexeme;
     lookahead := Lexer.consumeSym(lexer)
-    
+
   ELSE (* resync *)
     lookahead := skipToMatchTokenOrSet(Token.Semicolon, FIRST(Definition))
   END; (* IF *)
-  
+
   (* ';' *)
   IF matchToken(Token.Semicolon) THEN
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
     lookahead := skipToMatchSetOrSet(First(Definition), FOLLOW(Definition))
   END; (* IF *)
-  
+
+  (* ( RESERVED reswordList )? *)
+  IF lookahead.token = Token.Reserved THEN
+    (* RESERVED *)
+    lookahead := Lexer.consumeSym(lexer);
+
+    (* reswordList *)
+    IF matchSet(lookahead.token, FIRST(ReswordList)) THEN
+      astNode := reswordList(lookahead)
+    ELSE (* resync *)
+      lookahead := skipToMatchSet(FIRST(Definition))
+    END (* IF *)
+  END; (* IF *)
+
   (* (definition ';')+ *)
   REPEAT
     (* definition *)
     defNode := definition(lookahead);
-    
+
     (* ';' *)
     IF matchToken(Token.Semicolon) THEN
       lookahead := Lexer.consumeSym(lexer)
     ELSE (* resync *)
       lookahead := skipToMatchSetOrSet(First(Definition), FOLLOW(Definition))
     END (* IF *)
-    
+
   UNTIL NOT inFIRST(Definition, lookahead.token);
-  
+
   (* ENDG *)
   IF lookahead.token = Token.Endg THEN
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
     lookahead := skipToMatchTokenOrToken(Token.Ident, Token.Period)
   END; (* IF *)
-  
+
   (* ident *)
   IF matchToken(Token.Ident) THEN
     ident2 = lookahead.lexeme;
     lookahead := Lexer.consumeSym(lexer)
-    
-    (* TO DO : verify ident1 = ident2 *)
-    
+
+    TO DO : (* verify ident1 = ident2 *)
+
   ELSE (* resync *)
     lookahead := skipToMatchTokenOrToken(Token.Period, Token.EOF)
   END; (* IF *)
-  
+
   (* TO DO : build AST node *)
-  
+
   RETURN ast
 END specification;
 
@@ -209,12 +235,7 @@ END specification;
 (* ---------------------------------------------------------------------------
  * Private function definition(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  definition,  constructs its AST node,  passes  the  new look-
- * ahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * definition :=
- *   RESERVED reswordList |
  *   ALIAS aliasDef |
  *   nonTerminalDef |
  *   terminalDef |
@@ -224,21 +245,51 @@ END specification;
  *)
 PROCEDURE definition ( VAR lookahead : SymbolT ) : AstT;
 
+VAR
+  astNode : AstT;
+
 BEGIN
-  
-  (* TO DO *)
-  
-  RETURN ast
+
+  (* ALIAS aliasDef | *)
+  IF lookahead.token = Token.Alias THEN
+
+    (* ALIAS *)
+    lookahead := Lexer.consumeSym(lexer);
+
+    (* aliasDef *)
+    IF matchSet(FIRST(), lookahead.token) THEN
+      astNode := aliasDef(lookahead)
+    ELSE (* resync *)
+      skipToMatchTokenOrSet(Token.Endg, FIRST(definition))
+    END; (* IF *)
+
+  (* nonTerminalDef | *)
+  ELSIF inFIRST(NonTerminalDef, lookahead.token) THEN
+    astNode := nonTerminalDef(lookahead)
+
+  (* terminalDef | *)
+  ELSIF inFIRST(TerminalDef, lookahead.token) THEN
+    astNode := terminalDef(lookahead)
+
+  (* fragmentDef *)
+  ELSIF inFIRST(FragmentDef, lookahead.token) THEN
+    astNode := fragmentDef(lookahead)
+
+  ELSE (* unexpected symbol *)
+
+
+    TO DO : (* report error *)
+
+    astNode := NIL
+  END; (* IF *)
+
+  RETURN astNode
 END definition;
 
 
 (* ---------------------------------------------------------------------------
  * Private function reswordList(lookahead)
  * ---------------------------------------------------------------------------
- * Parses rule  reswordList,  constructs its AST node,  passes  the  new look-
- * ahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * reswordList :=
  *   reswordDef ( ',' reswordDef )*
  *   ;
@@ -246,21 +297,36 @@ END definition;
  *)
 PROCEDURE reswordList ( VAR lookahead : SymbolT ) : AstT;
 
+VAR
+  astNode : AstT;
+
 BEGIN
-  
-  (* TO DO *)
-  
-  RETURN ast
+
+  (* reswordDef *)
+  astNode := reswordDef(lookahead);
+
+  (* ( ',' reswordDef )* *)
+  WHILE lookahead.token = Token.Comma DO
+
+    (* ',' *)
+    lookahead := Lexer.consumeSym(lexer);
+
+    (* reswordDef *)
+    IF matchSet(FIRST(ReswordDef), lookahead.token) THEN
+      astNode := reswordDef(lookahead)
+    ELSE (* resync *)
+      skipToMatchTokenOrSetOrSet
+        (Token.Comma, FIRST(ReswordDef), FOLLOW(ReswordDef))
+    END (* IF *)
+  END; (* WHILE *)
+
+  RETURN astNode
 END reswordList;
 
 
 (* ---------------------------------------------------------------------------
  * Private function reswordDef(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  reswordDef,  constructs its AST node,  passes  the  new look-
- * ahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * reswordDef :=
  *   ReswordIdent ( '=' String )?
  *   ;
@@ -268,21 +334,42 @@ END reswordList;
  *)
 PROCEDURE reswordDef ( VAR lookahead : SymbolT ) : AstT;
 
+VAR
+  astNode : AstT;
+  resword, value : StringT;
+
 BEGIN
-  
-  (* TO DO *)
-  
-  RETURN ast
+
+  (* ReswordIdent *)
+  resword := lookahead.lexeme;
+
+  value := NIL;
+
+  (* ( '=' String )? *)
+  IF matchToken(Token.Equal, lookahead.token) THEN
+
+    (* '=' *)
+    lookahead := Lexer.consumeSym(lexer);
+
+    (* String *)
+    IF matchToken(Token.String, lookahead.token) THEN
+      value := lookahead.lexeme;
+      lookahead := Lexer.consumeSym(lexer)
+    ELSE (* resync *)
+      skipToMatchSet(FOLLOW(ReswordDef))
+    END (* IF *)
+  END; (* IF *)
+
+  (* build AST node *)
+  astNode := AST.NewNode(AstNodeType.Resword, resword, value);
+
+  RETURN astNode
 END reswordDef;
 
 
 (* ---------------------------------------------------------------------------
  * Private function aliasDef(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  aliasDef,  constructs its AST node,  passes the new lookahead
- * symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * aliasDef :=
  *   nonTermAliasDef | termAliasDef
  *   ;
@@ -290,132 +377,230 @@ END reswordDef;
  *)
 PROCEDURE aliasDef ( VAR lookahead : SymbolT ) : AstT;
 
+VAR
+  astNode : AstT;
+
 BEGIN
-  
-  (* TO DO *)
-  
-  RETURN ast
+
+  (* nonTermAliasDef | termAliasDef *)
+  IF inFIRST(NonTermAliasDef, lookahead.token) THEN
+
+    (* nonTermAliasDef *)
+    astNode := nonTermAliasDef(lookahead)
+
+  ELSIF inFIRST(termAliasDef, lookahead.token) THEN
+
+    (* termAliasDef *)
+    astNode := termAliasDef(lookahead)
+
+  ELSE (* unexpected symbol *)
+
+    astNode := NIL;
+
+    (* To DO : report error *)
+
+  END; (* IF *)
+
+  RETURN astNode
 END aliasDef;
 
 
 (* ---------------------------------------------------------------------------
  * Private function nonTermAliasDef(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  nonTermAliasDef,  constructs  its AST node,  passes  the  new
- * lookahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * nonTermAliasDef :=
- *   nonTermAliasList '=' ident
+ *   NonTermAlias ( ',' NonTermAlias )* '=' NonTermAliasValue
  *   ;
+ *
+ * alias NonTermAlias, NonTermAliasValue = NonTerminalIdent;
  * ---------------------------------------------------------------------------
  *)
 PROCEDURE nonTermAliasDef ( VAR lookahead : SymbolT ) : AstT;
 
+VAR
+  astNode : AstT;
+  value : StringT;
+  aliasList : LexQueueT;
+
 BEGIN
-  
-  (* TO DO *)
-  
-  RETURN ast
+
+  LexQueue.New(aliasList);
+
+  (* NonTermAlias *)
+  IF matchToken(Token.NonTerminalIdent, lookahead.token) THEN
+    AstQueue.Enqueue(aliasList, lookahead.lexeme);
+    lookahead := Lexer.consumeSym(lexer)
+  ELSE (* resync *)
+    skipToMatchTokenOrSet(Token.Comma, FOLLOW(NonTermAliasDef))
+  END; (* IF *)
+
+  (* ( ',' NonTermAlias )* *)
+  WHILE lookahead.token = Token.Comma THEN
+    (* ',' *)
+    lookahead := Lexer.consumeSym(lookahead);
+
+    (* NonTermAlias *)
+    IF matchToken(Token.NonTerminalIdent, lookahead.token) THEN
+      AstQueue.Enqueue(aliasList, lookahead.lexeme)
+    ELSE (* resync *)
+      skipToMatchTokenOrSet(Token.Comma, Token.Equal)
+    END (* IF *)
+  END; (* WHILE *)
+
+  (* '=' *)
+  IF matchToken(Token.Equal, lookahead.token) THEN
+    lookahead := Lexer.consumeSym(lookahead)
+  ELSE (* resync *)
+    skipToMatchTokenOrSet(Token.NonTerminalIdent, FOLLOW(NonTermAliasDef))
+  END; (* IF *)
+
+  value := NIL;
+
+  (* NonTerminalIdent *)
+  IF matchToken(Token.NonTerminalIdent, lookahead.token) THEN
+    value := lookahead.lexeme;
+    lookahead := Lexer.consumeSym(lexer)
+  ELSE (* resync *)
+    skipToMatchSet(FOLLOW(NonTermAliasDef))
+  END; (* IF *)
+
+  (* build ast node *)
+  astNode := AST.NewListNode(AstNodeType.AliasList, aliasList, value);
+
+  RETURN astNode
 END nonTermAliasDef;
-
-
-(* ---------------------------------------------------------------------------
- * Private function nonTermAliasList(lookahead)
- * ---------------------------------------------------------------------------
- * Parses rule  nonTermAliasList,  constructs  its AST node,  passes  the  new
- * lookahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
- * nonTermAliasList :=
- *   nonTermAliasList '=' ident
- *   ;
- * ---------------------------------------------------------------------------
- *)
-PROCEDURE nonTermAliasList ( VAR lookahead : SymbolT ) : AstT;
-
-BEGIN
-  
-  (* TO DO *)
-  
-  RETURN ast
-END nonTermAliasList;
 
 
 (* ---------------------------------------------------------------------------
  * Private function termAliasDef(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  termAliasDef,  constructs its AST node,  passes the new look-
- * ahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * termAliasDef :=
- *   terminalAliasList '=' ( TerminalIdent | literal )
- *   ;
+ *   TerminalAlias ( ',' TerminalAlias )* '=' termAliasValue
+ *
+ * alias TerminalAlias = TerminalIdent;
  * ---------------------------------------------------------------------------
  *)
 PROCEDURE termAliasDef ( VAR lookahead : SymbolT ) : AstT;
 
+VAR
+  astNode, value : AstT;
+  aliasList : LexQueueT;
+
 BEGIN
-  
-  (* TO DO *)
-  
-  RETURN ast
+
+  LexQueue.New(aliasList);
+
+  (* TerminalAlias *)
+  IF matchToken(Token.TerminalIdent, lookahead.token) THEN
+    AstQueue.Enqueue(aliasList, lookahead.lexeme);
+    lookahead := Lexer.consumeSym(lexer)
+  ELSE (* resync *)
+    skipToMatchTokenOrSet(Token.Comma, FOLLOW(TermAliasDef))
+  END; (* IF *)
+
+  (* ( ',' TerminalAlias )* *)
+  WHILE lookahead.token = Token.Comma THEN
+    (* ',' *)
+    lookahead := Lexer.consumeSym(lookahead);
+
+    (* TerminalAlias *)
+    IF matchToken(Token.TerminalIdent, lookahead.token) THEN
+      AstQueue.Enqueue(aliasList, lookahead.lexeme)
+    ELSE (* resync *)
+      skipToMatchTokenOrSet(Token.Comma, Token.Equal)
+    END (* IF *)
+  END; (* WHILE *)
+
+  (* '=' *)
+  IF matchToken(Token.Equal, lookahead.token) THEN
+    lookahead := Lexer.consumeSym(lookahead)
+  ELSE (* resync *)
+    skipToMatchTokenOrSet(Token.NonTerminalIdent, FOLLOW(TermAliasDef))
+  END; (* IF *)
+
+  (* termAliasValue *)
+  IF matchSet(FIRST(termAliasValue), lookahead.token) THEN
+    value := termAliasValue(lookahead)
+  ELSE (* resync *)
+    skipToMatchSet(FOLLOW(TermAliasDef));
+    value := NIL
+  END; (* IF *)
+
+  (* build ast node *)
+  astNode := AST.NewListNode(AstNodeType.AliasList, aliasList, value);
+
+  RETURN astNode
 END termAliasDef;
 
 
 (* ---------------------------------------------------------------------------
- * Private function terminalAliasList(lookahead)
+ * Private function termAliasValue(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  terminalAliasList,  constructs its AST node,  passes  the new
- * lookahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
- * terminalAliasList :=
- *   TerminalIdent ( ',' TerminalIdent )*
+ * termAliasValue :=
+ *   TerminalIdent | literal
  *   ;
  * ---------------------------------------------------------------------------
  *)
-PROCEDURE terminalAliasList ( VAR lookahead : SymbolT ) : AstT;
+PROCEDURE termAliasValue ( VAR lookahead : SymbolT ) : AstT;
+
+VAR
+  astNode : AstT;
+  value : StringT;
 
 BEGIN
-  
-  (* TO DO *)
-  
-  RETURN ast
-END terminalAliasList;
+
+  (* TerminalIdent | *)
+  IF lookahead.token = Token.TerminalIdent THEN
+    value := lookahead.lexeme;
+    lookahead := Lexer.consumeSym(lexer);
+    astNode := AST.NewTerminalNode(AstNodeType.Ident, value)
+
+  (* literal *)
+  ELSE
+    astNode := literal(lookahead)
+  END; (* IF *)
+
+  RETURN astNode
+END termAliasValue;
 
 
 (* ---------------------------------------------------------------------------
  * Private function literal(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  literal,  constructs its AST node,  passes  the new lookahead
- * symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * literal :=
  *   String | QuotedLowerLetter | QuotedUpperLetter |
- *   QuotedDigit | QuotedNonAlphaNum | CharCode | EOF
+ *   QuotedDigit | QuotedNonAlphaNum | CharCode
  *   ;
  * ---------------------------------------------------------------------------
  *)
 PROCEDURE literal ( VAR lookahead : SymbolT ) : AstT;
 
+VAR
+  astNode : AstT;
+  value : StringT;
+
 BEGIN
-  
-  (* TO DO *)
-  
-  RETURN ast
+
+  value := lookahead.lexeme;
+
+  (* String | QuotedLowerLetter | QuotedUpperLetter |
+     QuotedDigit | QuotedNonAlphaNum | *)
+  IF lookahead.token = Token.CharCode THEN
+    astNode := AST.NewTerminalNode(AstNodeType.Quoted, value)
+  (* CharCode *)
+  ELSE
+    astNode := AST.NewTerminalNode(AstNodeType.CharCode, value)
+  END; (* IF *)
+
+  lookahead := Lexer.consumeSym(lexer);
+
+  RETURN astNode
 END literal;
 
 
 (* ---------------------------------------------------------------------------
  * Private function nonTerminalDef(lookahead)
  * ---------------------------------------------------------------------------
- * Parses rule nonTerminalDef,  constructs its AST node,  passes the new look-
- * ahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * nonTerminalDef :=
  *   NonTerminalIdent ':=' expression+
  *   ;
@@ -424,9 +609,9 @@ END literal;
 PROCEDURE nonTerminalDef ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END nonTerminalDef;
 
@@ -434,10 +619,6 @@ END nonTerminalDef;
 (* ---------------------------------------------------------------------------
  * Private function expression(lookahead)
  * ---------------------------------------------------------------------------
- * Parses rule expression,  constructs its AST node,  passes the new lookahead
- * symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * expression :=
  *   term ( '|' term )*
  *   ;
@@ -446,9 +627,9 @@ END nonTerminalDef;
 PROCEDURE expression ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END expression;
 
@@ -456,10 +637,6 @@ END expression;
 (* ---------------------------------------------------------------------------
  * Private function term(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  term,  constructs its  AST node,  passes  the  new  lookahead
- * symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * term :=
  *   factor ( '*' | '+' | '?' )? | literalOrRange
  *   ;
@@ -468,9 +645,9 @@ END expression;
 PROCEDURE term ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END term;
 
@@ -478,10 +655,6 @@ END term;
 (* ---------------------------------------------------------------------------
  * Private function factor(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  factor,  constructs its AST node,  passes  the new  lookahead
- * symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * factor :=
  *   NonTerminalIdent | TerminalIdent | ReswordIdent | '(' expression+ ')'
  *   ;
@@ -490,9 +663,9 @@ END term;
 PROCEDURE factor ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END factor;
 
@@ -500,10 +673,6 @@ END factor;
 (* ---------------------------------------------------------------------------
  * Private function terminal(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  terminal,  constructs its AST node,  passes the new lookahead
- * symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * terminal :=
  *   TerminalIdent ':=' terminalExpression+
  *   ;
@@ -512,9 +681,9 @@ END factor;
 PROCEDURE terminal ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END terminal;
 
@@ -522,10 +691,6 @@ END terminal;
 (* ---------------------------------------------------------------------------
  * Private function terminalExpression(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  terminalExpression,  constructs its AST node,  passes the new
- * lookahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * terminalExpression :=
  *   terminalTerm ( '|' terminalTerm )*
  *   ;
@@ -534,9 +699,9 @@ END terminal;
 PROCEDURE terminalExpression ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END terminalExpression;
 
@@ -544,10 +709,6 @@ END terminalExpression;
 (* ---------------------------------------------------------------------------
  * Private function terminalTerm(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  terminalTerm,  constructs its AST node,  passes the new look-
- * ahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * terminalTerm :=
  *   terminalFactor ( '*' | '+' | '?' )? | literalOrRange
  *   ;
@@ -556,9 +717,9 @@ END terminalExpression;
 PROCEDURE terminalTerm ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END terminalTerm;
 
@@ -566,10 +727,6 @@ END terminalTerm;
 (* ---------------------------------------------------------------------------
  * Private function terminalFactor(lookahead)
  * ---------------------------------------------------------------------------
- * Parses rule terminalFactor,  constructs its AST node,  passes the new look-
- * ahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * terminalFactor :=
  *   TerminalIdent | '(' terminalExpression+ ')'
  *   ;
@@ -578,9 +735,9 @@ END terminalTerm;
 PROCEDURE terminalFactor ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END terminalFactor;
 
@@ -588,10 +745,6 @@ END terminalFactor;
 (* ---------------------------------------------------------------------------
  * Private function fragmentDef(lookahead)
  * ---------------------------------------------------------------------------
- * Parses rule  fragmentDef,  constructs its AST node,  passes  the new  look-
- * ahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * fragmentDef :=
  *   '.' terminalDef
  *   ;
@@ -600,9 +753,9 @@ END terminalFactor;
 PROCEDURE fragmentDef ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END fragmentDef;
 
@@ -610,10 +763,6 @@ END fragmentDef;
 (* ---------------------------------------------------------------------------
  * Private function literalOrRange(lookahead)
  * ---------------------------------------------------------------------------
- * Parses rule literalOrRange,  constructs its AST node,  passes the new look-
- * ahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * literalOrRange :=
  *   String | quotedLowerCharOrRange | quotedUpperCharOrRange |
  *   quotedDigitOrRange | charCodeOrRange | QuotedAlphaNum | EOF
@@ -623,9 +772,9 @@ END fragmentDef;
 PROCEDURE literalOrRange ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END literalOrRange;
 
@@ -633,10 +782,6 @@ END literalOrRange;
 (* ---------------------------------------------------------------------------
  * Private function quotedLowerLetterOrRange(lookahead)
  * ---------------------------------------------------------------------------
- * Parses rule quotedLowerLetterOrRange,  constructs its AST node,  passes the
- * new lookahead symbol back in out-parameter lookahead and returns the AST
- * node.  Returns NIL on failure.
- *
  * quotedLowerLetterOrRange :=
  *   QuotedLowerLetter ( '..' QuotedLowerLetter )?
  *   ;
@@ -645,9 +790,9 @@ END literalOrRange;
 PROCEDURE quotedLowerLetterOrRange ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END quotedLowerLetterOrRange;
 
@@ -655,10 +800,6 @@ END quotedLowerLetterOrRange;
 (* ---------------------------------------------------------------------------
  * Private function quotedUpperLetterOrRange(lookahead)
  * ---------------------------------------------------------------------------
- * Parses rule quotedUpperLetterOrRange,  constructs its AST node,  passes the
- * new lookahead symbol back in out-parameter lookahead and returns the AST
- * node.  Returns NIL on failure.
- *
  * quotedUpperLetterOrRange :=
  *   QuotedUpperLetter ( '..' QuotedUpperLetter )?
  *   ;
@@ -667,9 +808,9 @@ END quotedLowerLetterOrRange;
 PROCEDURE quotedUpperLetterOrRange ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END quotedUpperLetterOrRange;
 
@@ -677,10 +818,6 @@ END quotedUpperLetterOrRange;
 (* ---------------------------------------------------------------------------
  * Private function quotedDigitOrRange(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  quotedDigitOrRange,  constructs its AST node,  passes the new
- * lookahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * quotedDigitOrRange :=
  *   QuotedDigit ( '..' QuotedDigit )?
  *   ;
@@ -689,9 +826,9 @@ END quotedUpperLetterOrRange;
 PROCEDURE quotedDigitOrRange ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END quotedDigitOrRange;
 
@@ -699,10 +836,6 @@ END quotedDigitOrRange;
 (* ---------------------------------------------------------------------------
  * Private function charCodeOrRange(lookahead)
  * ---------------------------------------------------------------------------
- * Parses  rule  charCodeOrRange,  constructs  its AST node,  passes  the  new
- * lookahead symbol back in out-parameter lookahead and returns the AST node.
- * Returns NIL on failure.
- *
  * charCodeOrRange :=
  *   CharCode ( '..' CharCode )?
 
@@ -712,9 +845,9 @@ END quotedDigitOrRange;
 PROCEDURE charCodeOrRange ( VAR lookahead : SymbolT ) : AstT;
 
 BEGIN
-  
+
   (* TO DO *)
-  
+
   RETURN ast
 END charCodeOrRange;
 
