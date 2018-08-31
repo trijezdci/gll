@@ -1378,13 +1378,13 @@ BEGIN
 END matchToken;
 
 
-(* --------------------------------------------------------------------------
+(* ---------------------------------------------------------------------------
  * private function matchSet(expectedSet)
- * --------------------------------------------------------------------------
- * Matches the token of the passed in symbol  to set expectedSet  and returns
- * TRUE if it matches any token in the set.  If there is no match, it reports
- * a syntax error, increments the error count and returns FALSE.
- * --------------------------------------------------------------------------
+ * ---------------------------------------------------------------------------
+ * Matches  the token  of the passed in symbol to expectedSet and returns TRUE
+ * if it matches  any token  in the set.  If there is  no match,  it reports a
+ * syntax error, increments the error count and returns FALSE.
+ * ---------------------------------------------------------------------------
  *)
 PROCEDURE matchSet ( expectedSet : TokenSetT; sym : SymbolT ) : BOOLEAN;
 
