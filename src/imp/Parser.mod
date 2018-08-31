@@ -54,7 +54,7 @@ FROM NonTerminals IMPORT FIRST, FOLLOW, inFIRST;
 
 (* Parse Procedure Type *)
 
-TYPE ParseProc = PROCEDURE ( VAR AstT ) : SymbolT;
+TYPE ParseProc = PROCEDURE ( VAR SymbolT ) : AstT;
 
 
 (* Parser context *)
@@ -233,60 +233,6 @@ END specification;
 
 
 (* ---------------------------------------------------------------------------
- * Private function definition(lookahead)
- * ---------------------------------------------------------------------------
- * definition :=
- *   ALIAS aliasDef |
- *   nonTerminalDef |
- *   terminalDef |
- *   fragmentDef
- *   ;
- * ---------------------------------------------------------------------------
- *)
-PROCEDURE definition ( VAR lookahead : SymbolT ) : AstT;
-
-VAR
-  astNode : AstT;
-
-BEGIN
-
-  (* ALIAS aliasDef | *)
-  IF lookahead.token = Token.Alias THEN
-
-    (* ALIAS *)
-    lookahead := Lexer.consumeSym(lexer);
-
-    (* aliasDef *)
-    IF matchSet(FIRST(), lookahead.token) THEN
-      astNode := aliasDef(lookahead)
-    ELSE (* resync *)
-      lookahead := skipToMatchTokenOrSet(Token.Endg, FIRST(definition))
-    END; (* IF *)
-
-  (* nonTerminalDef | *)
-  ELSIF inFIRST(NonTerminalDef, lookahead.token) THEN
-    astNode := nonTerminalDef(lookahead)
-
-  (* terminalDef | *)
-  ELSIF inFIRST(TerminalDef, lookahead.token) THEN
-    astNode := terminalDef(lookahead)
-
-  (* fragmentDef *)
-  ELSIF inFIRST(FragmentDef, lookahead.token) THEN
-    astNode := fragmentDef(lookahead)
-
-  ELSE (* unexpected symbol *)
-
-    TO DO : (* report error *)
-
-    astNode := NIL
-  END; (* IF *)
-
-  RETURN astNode
-END definition;
-
-
-(* ---------------------------------------------------------------------------
  * Private function reswordList(lookahead)
  * ---------------------------------------------------------------------------
  * reswordList :=
@@ -364,6 +310,60 @@ BEGIN
 
   RETURN astNode
 END reswordDef;
+
+
+(* ---------------------------------------------------------------------------
+ * Private function definition(lookahead)
+ * ---------------------------------------------------------------------------
+ * definition :=
+ *   ALIAS aliasDef |
+ *   nonTerminalDef |
+ *   terminalDef |
+ *   fragmentDef
+ *   ;
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE definition ( VAR lookahead : SymbolT ) : AstT;
+
+VAR
+  astNode : AstT;
+
+BEGIN
+
+  (* ALIAS aliasDef | *)
+  IF lookahead.token = Token.Alias THEN
+
+    (* ALIAS *)
+    lookahead := Lexer.consumeSym(lexer);
+
+    (* aliasDef *)
+    IF matchSet(FIRST(), lookahead.token) THEN
+      astNode := aliasDef(lookahead)
+    ELSE (* resync *)
+      lookahead := skipToMatchTokenOrSet(Token.Endg, FIRST(definition))
+    END; (* IF *)
+
+  (* nonTerminalDef | *)
+  ELSIF inFIRST(NonTerminalDef, lookahead.token) THEN
+    astNode := nonTerminalDef(lookahead)
+
+  (* terminalDef | *)
+  ELSIF inFIRST(TerminalDef, lookahead.token) THEN
+    astNode := terminalDef(lookahead)
+
+  (* fragmentDef *)
+  ELSIF inFIRST(FragmentDef, lookahead.token) THEN
+    astNode := fragmentDef(lookahead)
+
+  ELSE (* unexpected symbol *)
+
+    TO DO : (* report error *)
+
+    astNode := NIL
+  END; (* IF *)
+
+  RETURN astNode
+END definition;
 
 
 (* ---------------------------------------------------------------------------
