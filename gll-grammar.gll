@@ -137,20 +137,20 @@ nonTerminalDef :=
 /* Expression */
 
 expression :=
-  termList ( '|' termList )*
-  ;
-
-
-/* Term List */
-
-termList :=
-  term+
+  term ( '|' term )*
   ;
 
 
 /* Term */
 
 term :=
+  simpleTerm+
+  ;
+
+
+/* Simple Term */
+
+simpleTerm :=
   factor ( '*' | '+' | '?' )? | literalOrRange
   ;
 
@@ -172,20 +172,20 @@ terminalDef :=
 /* Terminal Expression */
 
 terminalExpression :=
- terminalTermList ( '|' terminalTermList )*
+ terminalTerm ( '|' terminalTerm )*
  ;
-
-
-/* Terminal Term List */
-
-terminalTermList :=
-  terminalTerm+
-  ;
 
 
 /* Terminal Term */
 
 terminalTerm :=
+  simpleTerminalTerm+
+  ;
+
+
+/* Simple Terminal Term */
+
+simpleTerminalTerm :=
   terminalFactor ( '*' | '+' | '?' )? | literalOrRange
   ;
 
@@ -214,7 +214,7 @@ nonSemanticDef :=
 /* Literal Or Range Thereof */
 
 literalOrRange :=
-  String | quotedLowerCharOrRange | quotedUpperCharOrRange |
+  String | quotedLowerLetterOrRange | quotedUpperLetterOrRange |
   quotedDigitOrRange | charCodeOrRange | QuotedAlphaNum
   ;
 
