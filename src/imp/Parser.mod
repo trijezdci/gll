@@ -161,7 +161,6 @@ VAR
   ident1, ident2 : StringT;
 
 BEGIN
-
   (* GRAMMAR *)
   lookahead := Lexer.consumeSym(lexer);
 
@@ -253,7 +252,6 @@ VAR
   astNode : AstT;
 
 BEGIN
-
   (* reswordDef *)
   astNode := reswordDef(lookahead);
 
@@ -291,7 +289,6 @@ VAR
   resword, value : StringT;
 
 BEGIN
-
   (* ReswordIdent *)
   resword := lookahead.lexeme;
 
@@ -710,7 +707,6 @@ VAR
   astNode, factorNode : AstT;
 
 BEGIN
-
   (* factor ( '*' | '+' | '?' )? | *)
   IF inFIRST(Factor, lookahead.token) THEN
     factorNode := factor(lookahead);
@@ -753,7 +749,6 @@ VAR
   astNode : AstT;
 
 BEGIN
-
   (* NonTerminalIdent | TerminalIdent | ReswordIdent | '(' expression ')' *)
   CASE lookahead.token OF
   (* NonTerminalIdent | *)
@@ -812,7 +807,6 @@ VAR
   astNode, value : AstT;
 
 BEGIN
-
   (* NonTerminalIdent *)
   ident := lookahead.lexeme;
   lookahead := Lexer.consumeSym(lexer)
@@ -855,7 +849,6 @@ VAR
   astNode : AstT;
 
 BEGIN
-
   (* terminalExpression | *)
   IF lookahead.token # Token.PlatformDependent THEN
     astNode := terminalExpression(lookahead)
@@ -884,7 +877,6 @@ VAR
   termList : AstQueueT;
 
 BEGIN
-
   AstQueue.New(termList);
 
   (* terminalTerm *)
@@ -928,7 +920,6 @@ VAR
   simpleTermList : AstQueueT;
 
 BEGIN
-
   AstQueue.New(simpleTermList);
 
   (* simpleTerminalTerm+ *)
@@ -958,7 +949,6 @@ VAR
   astNode, factorNode : AstT;
 
 BEGIN
-
   (* terminalFactor ( '*' | '+' | '?' )? | *)
   IF inFIRST(TerminalFactor, lookahead.token) THEN
     factorNode := factor(lookahead);
