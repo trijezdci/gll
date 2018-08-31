@@ -166,7 +166,7 @@ BEGIN
   lookahead := Lexer.consumeSym(lexer);
 
   (* ident *)
-  IF matchToken(Token.Ident) THEN
+  IF matchToken(Token.Ident, lookahead.token) THEN
     ident1 = lookahead.lexeme;
     lookahead := Lexer.consumeSym(lexer)
 
@@ -175,7 +175,7 @@ BEGIN
   END; (* IF *)
 
   (* ';' *)
-  IF matchToken(Token.Semicolon) THEN
+  IF matchToken(Token.Semicolon, lookahead.token) THEN
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
     lookahead := skipToMatchSetOrSet(First(Definition), FOLLOW(Definition))
@@ -187,7 +187,7 @@ BEGIN
     lookahead := Lexer.consumeSym(lexer);
 
     (* reswordList *)
-    IF matchSet(lookahead.token, FIRST(ReswordList)) THEN
+    IF matchSet(FIRST(ReswordList), lookahead.token) THEN
       astNode := reswordList(lookahead)
     ELSE (* resync *)
       lookahead := skipToMatchSet(FIRST(Definition))
@@ -200,7 +200,7 @@ BEGIN
     defNode := definition(lookahead);
 
     (* ';' *)
-    IF matchToken(Token.Semicolon) THEN
+    IF matchToken(Token.Semicolon, lookahead.token) THEN
       lookahead := Lexer.consumeSym(lexer)
     ELSE (* resync *)
       lookahead := skipToMatchSetOrSet(First(Definition), FOLLOW(Definition))
@@ -216,7 +216,7 @@ BEGIN
   END; (* IF *)
 
   (* ident *)
-  IF matchToken(Token.Ident) THEN
+  IF matchToken(Token.Ident, lookahead.token) THEN
     ident2 = lookahead.lexeme;
     lookahead := Lexer.consumeSym(lexer)
 
@@ -617,13 +617,8 @@ VAR
 BEGIN
 
   (* NonTerminalIdent *)
-  IF matchToken() THEN
-    ident := lookahead.lexeme;
-    lookahead := Lexer.consumeSym(lexer)
-  ELSE (* resync *)
-    lookahead := skipToMatchTokenOrSet(Token.Assign, FIRST(Expression));
-    ident := NIL
-  END; (* IF *)
+  ident := lookahead.lexeme;
+  lookahead := Lexer.consumeSym(lexer)
 
   (* ':=' *)
   IF matchToken(Token.Assign, lookahead.token) THEN
@@ -824,21 +819,75 @@ END factor;
  * Private function terminalDef(lookahead)
  * ---------------------------------------------------------------------------
  * terminalDef :=
- *   TerminalIdent ':=' ( terminalExpression | '<platform dependent>' )
+ *   TerminalIdent ':=' terminalValue
+ *   ;
+
+ ( terminalExpression | '<platform dependent>' )
  *   ;
  * ---------------------------------------------------------------------------
  *)
 PROCEDURE terminalDef ( VAR lookahead : SymbolT ) : AstT;
 
 VAR
+  ident : StringT;
+  astNode, value : AstT;
+
+BEGIN
+
+  (* NonTerminalIdent *)
+  ident := lookahead.lexeme;
+  lookahead := Lexer.consumeSym(lexer)
+  ELSE (* resync *)
+
+  (* ':=' *)
+  IF matchToken(Token.Assign, lookahead.token) THEN
+    lookahead := Lexer.consumeSym(lexer)
+  ELSE (* resync *)
+    lookahead :=
+      skipToMatchSetOrSet(FIRST(TerminalValue), FOLLOW(TerminalValue))
+  END; (* IF *)
+
+  (* terminalValue *)
+  IF matchSet(FIRST(TerminalValue), lookahead.token) THEN
+    value := terminalValue(lookahead)
+  ELSE (* resync *)
+    lookahead := skipToMatchSet(FOLLOW(TerminalValue));
+    value := NIL
+  END; (* IF *)
+
+  (* build AST node *)
+  astNode := AST.NewNode(AstNodeType.Terminal, ident, value);
+
+  RETURN astNode
+END terminalDef;
+
+
+(* ---------------------------------------------------------------------------
+ * Private function terminalValue(lookahead)
+ * ---------------------------------------------------------------------------
+ * terminalValue :=
+ *   terminalExpression | '<platform dependent>'
+ *   ;
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE terminalValue ( VAR lookahead : SymbolT ) : AstT;
+
+VAR
   astNode : AstT;
 
 BEGIN
 
-  (* TO DO *)
+  (* terminalExpression | *)
+  IF lookahead.token # Token.PlatformDependent THEN
+    astNode := terminalExpression(lookahead)
+
+  (* '<platform dependent>' *)
+  ELSE
+    astNode := AST.NewTerminalNode(AstNodeType.PlatformDependent)
+  END; (* IF *)
 
   RETURN astNode
-END terminalDef;
+END terminalValue;
 
 
 (* ---------------------------------------------------------------------------
@@ -886,14 +935,14 @@ END terminalExpression;
 
 
 (* ---------------------------------------------------------------------------
- * Private function terminaTerm(lookahead)
+ * Private function terminalTerm(lookahead)
  * ---------------------------------------------------------------------------
- * terminaTerm :=
+ * terminalTerm :=
  *   simpleTerminalTerm+
  *   ;
  * ---------------------------------------------------------------------------
  *)
-PROCEDURE terminaTerm ( VAR lookahead : SymbolT ) : AstT;
+PROCEDURE terminalTerm ( VAR lookahead : SymbolT ) : AstT;
 
 VAR
   astNode, simpleTermNode : AstT;
@@ -913,7 +962,7 @@ BEGIN
   astNode := AST.NewListNode(NodeType.TerminalTerm, simpleTermList);
 
   RETURN astNode
-END terminaTerm;
+END terminalTerm;
 
 
 (* ---------------------------------------------------------------------------
