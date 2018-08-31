@@ -61,18 +61,7 @@ ident :=
   ;
 
 
-/* Definition */
-
-definition :=
-  ALIAS aliasDef |
-  nonTerminalDef |
-  terminalDef |
-  fragmentDef |
-  nonSemanticDef
-  ;
-
-
-/* Reserved Word Definition List */
+/* Reserved Word List */
 
 reswordList :=
   reswordDef ( ',' reswordDef )*
@@ -83,6 +72,17 @@ reswordList :=
 
 reswordDef :=
   ReswordIdent ( '=' String )?
+  ;
+
+
+/* Definition */
+
+definition :=
+  ALIAS aliasDef |
+  nonTerminalDef |
+  terminalDef |
+  fragmentDef |
+  nonSemanticDef
   ;
 
 
@@ -109,7 +109,6 @@ termAliasDef :=
   ;
 
 alias TerminalAlias = TerminalIdent;
-
 
 
 /* Terminal Alias Value */
@@ -165,7 +164,14 @@ factor :=
 /* Terminal Definition */
 
 terminalDef :=
-  TerminalIdent ':=' ( terminalExpression | '<platform dependent>' )
+  TerminalIdent ':=' terminalValue
+  ;
+
+
+/* Terminal Value */
+
+terminalValue :=
+  terminalExpression | '<platform dependent>'
   ;
 
 
