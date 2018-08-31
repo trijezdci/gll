@@ -81,7 +81,6 @@ VAR
   ast : AstT;
 
 BEGIN
-
   (* init statistics *)
 
   statistics.lexicalWarnings := 0; statistics.lexicalErrors := 0;
