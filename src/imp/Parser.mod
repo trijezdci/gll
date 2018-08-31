@@ -1341,4 +1341,74 @@ BEGIN
 END charCodeOrRange;
 
 
+(* ************************************************************************ *
+ * Token Matching and Resynchronisation                                     *
+ * ************************************************************************ *)
+
+(* ---------------------------------------------------------------------------
+ * private function matchToken(expectedToken, symbol)
+ * ---------------------------------------------------------------------------
+ * Matches the token of the passed in symbol to expectedToken and returns TRUE
+ * if they match.  If they don't match,  it reports a syntax error, increments
+ * the error count and returns FALSE.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE matchToken ( expectedToken : TokenT; sym : SymbolT ) : BOOLEAN;
+
+BEGIN
+  (* check if symbol token matches expectedToken *)
+
+  (* match *)
+  IF expectedToken = sym.token THEN
+    RETURN TRUE
+
+  (* no match *)
+  ELSE
+    (* report error *)
+    EmitSyntaxErrorWToken(expectedToken, sym);
+
+    (* print source line and error position marker *)
+    Source.PrintLineAndMarkColumn(source, sym.line, sym.col);
+
+    (* update error count *)
+    statistics.syntaxErrors := statistics.syntaxErrors + 1;
+
+    RETURN FALSE
+  END (* IF *)
+END matchToken;
+
+
+(* --------------------------------------------------------------------------
+ * private function matchSet(expectedSet)
+ * --------------------------------------------------------------------------
+ * Matches the token of the passed in symbol  to set expectedSet  and returns
+ * TRUE if it matches any token in the set.  If there is no match, it reports
+ * a syntax error, increments the error count and returns FALSE.
+ * --------------------------------------------------------------------------
+ *)
+PROCEDURE matchSet ( expectedSet : TokenSetT; sym : SymbolT ) : BOOLEAN;
+
+BEGIN
+  (* check if symbol token matches any token in expectedSet *)
+
+  (* match *)
+  IF TokenSet.isElement(expectedSet, sym.token) THEN
+    RETURN TRUE
+
+  (* no match *)
+  ELSE
+    (* report error *)
+    EmitSyntaxErrorWSet(expectedSet, sym);
+
+    (* print source line *)
+    Source.PrintLineAndMarkColumn(source, sym.line, sym.col);
+
+    (* update error count *)
+    statistics.syntaxErrors := statistics.syntaxErrors + 1;
+
+    RETURN FALSE
+  END (* IF *)
+END matchSet;
+
+
 END Parser.
