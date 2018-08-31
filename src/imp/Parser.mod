@@ -166,7 +166,7 @@ BEGIN
   lookahead := Lexer.consumeSym(lexer);
 
   (* ident *)
-  IF matchToken(Token.Ident, lookahead.token) THEN
+  IF matchToken(Token.Ident, lookahead) THEN
     ident1 = lookahead.lexeme;
     lookahead := Lexer.consumeSym(lexer)
 
@@ -175,7 +175,7 @@ BEGIN
   END; (* IF *)
 
   (* ';' *)
-  IF matchToken(Token.Semicolon, lookahead.token) THEN
+  IF matchToken(Token.Semicolon, lookahead) THEN
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
     lookahead := skipToMatchSetOrSet(First(Definition), FOLLOW(Definition))
@@ -187,7 +187,7 @@ BEGIN
     lookahead := Lexer.consumeSym(lexer);
 
     (* reswordList *)
-    IF matchSet(FIRST(ReswordList), lookahead.token) THEN
+    IF matchSet(FIRST(ReswordList), lookahead) THEN
       astNode := reswordList(lookahead)
     ELSE (* resync *)
       lookahead := skipToMatchSet(FIRST(Definition))
@@ -200,7 +200,7 @@ BEGIN
     defNode := definition(lookahead);
 
     (* ';' *)
-    IF matchToken(Token.Semicolon, lookahead.token) THEN
+    IF matchToken(Token.Semicolon, lookahead) THEN
       lookahead := Lexer.consumeSym(lexer)
     ELSE (* resync *)
       lookahead := skipToMatchSetOrSet(First(Definition), FOLLOW(Definition))
@@ -209,14 +209,14 @@ BEGIN
   UNTIL NOT inFIRST(Definition, lookahead.token);
 
   (* ENDG *)
-  IF lookahead.token = Token.Endg THEN
+  IF matchToken(Token.Endg, lookahead) THEN
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
     lookahead := skipToMatchTokenOrToken(Token.Ident, Token.Period)
   END; (* IF *)
 
   (* ident *)
-  IF matchToken(Token.Ident, lookahead.token) THEN
+  IF matchToken(Token.Ident, lookahead) THEN
     ident2 = lookahead.lexeme;
     lookahead := Lexer.consumeSym(lexer)
 
@@ -224,6 +224,13 @@ BEGIN
 
   ELSE (* resync *)
     lookahead := skipToMatchTokenOrToken(Token.Period, Token.EOF)
+  END; (* IF *)
+
+  (* '.' *)
+  IF matchToken(Token.Period, lookahead) THEN
+    lookahead := Lexer.consumeSym(lexer)
+  ELSE (* resync *)
+    lookahead := skipToMatchToken(Token.EOF)
   END; (* IF *)
 
   (* TO DO : build AST node *)
@@ -257,7 +264,7 @@ BEGIN
     lookahead := Lexer.consumeSym(lexer);
 
     (* reswordDef *)
-    IF matchSet(FIRST(ReswordDef), lookahead.token) THEN
+    IF matchSet(FIRST(ReswordDef), lookahead) THEN
       astNode := reswordDef(lookahead)
     ELSE (* resync *)
       lookahead := skipToMatchTokenOrSetOrSet
@@ -291,13 +298,12 @@ BEGIN
   value := NIL;
 
   (* ( '=' String )? *)
-  IF matchToken(Token.Equal, lookahead.token) THEN
-
+  IF matchToken(Token.Equal, lookahead) THEN
     (* '=' *)
     lookahead := Lexer.consumeSym(lexer);
 
     (* String *)
-    IF matchToken(Token.String, lookahead.token) THEN
+    IF matchToken(Token.String, lookahead) THEN
       value := lookahead.lexeme;
       lookahead := Lexer.consumeSym(lexer)
     ELSE (* resync *)
@@ -329,7 +335,6 @@ VAR
   astNode : AstT;
 
 BEGIN
-
   (* ALIAS aliasDef | *)
   IF lookahead.token = Token.Alias THEN
 
@@ -337,29 +342,23 @@ BEGIN
     lookahead := Lexer.consumeSym(lexer);
 
     (* aliasDef *)
-    IF matchSet(FIRST(), lookahead.token) THEN
+    IF matchSet(FIRST(AliasDef), lookahead) THEN
       astNode := aliasDef(lookahead)
     ELSE (* resync *)
       lookahead := skipToMatchTokenOrSet(Token.Endg, FIRST(definition))
     END; (* IF *)
 
   (* nonTerminalDef | *)
-  ELSIF inFIRST(NonTerminalDef, lookahead.token) THEN
+  ELSIF inFIRST(NonTerminalDef, lookahead) THEN
     astNode := nonTerminalDef(lookahead)
 
   (* terminalDef | *)
-  ELSIF inFIRST(TerminalDef, lookahead.token) THEN
+  ELSIF inFIRST(TerminalDef, lookahead) THEN
     astNode := terminalDef(lookahead)
 
   (* fragmentDef *)
-  ELSIF inFIRST(FragmentDef, lookahead.token) THEN
+  ELSE
     astNode := fragmentDef(lookahead)
-
-  ELSE (* unexpected symbol *)
-
-    TO DO : (* report error *)
-
-    astNode := NIL
   END; (* IF *)
 
   RETURN astNode
@@ -380,24 +379,13 @@ VAR
   astNode : AstT;
 
 BEGIN
-
-  (* nonTermAliasDef | termAliasDef *)
+  (* nonTermAliasDef *)
   IF inFIRST(NonTermAliasDef, lookahead.token) THEN
-
-    (* nonTermAliasDef *)
     astNode := nonTermAliasDef(lookahead)
 
-  ELSIF inFIRST(termAliasDef, lookahead.token) THEN
-
-    (* termAliasDef *)
+  (* termAliasDef *)
+  ELSE
     astNode := termAliasDef(lookahead)
-
-  ELSE (* unexpected symbol *)
-
-    astNode := NIL;
-
-    (* To DO : report error *)
-
   END; (* IF *)
 
   RETURN astNode
@@ -422,11 +410,10 @@ VAR
   aliasList : LexQueueT;
 
 BEGIN
-
   LexQueue.New(aliasList);
 
   (* NonTermAlias *)
-  IF matchToken(Token.NonTerminalIdent, lookahead.token) THEN
+  IF matchToken(Token.NonTerminalIdent, lookahead) THEN
     AstQueue.Enqueue(aliasList, lookahead.lexeme);
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
@@ -447,7 +434,7 @@ BEGIN
   END; (* WHILE *)
 
   (* '=' *)
-  IF matchToken(Token.Equal, lookahead.token) THEN
+  IF matchToken(Token.Equal, lookahead) THEN
     lookahead := Lexer.consumeSym(lookahead)
   ELSE (* resync *)
     lookahead := skipToMatchTokenOrSet
@@ -457,7 +444,7 @@ BEGIN
   value := NIL;
 
   (* NonTerminalIdent *)
-  IF matchToken(Token.NonTerminalIdent, lookahead.token) THEN
+  IF matchToken(Token.NonTerminalIdent, lookahead) THEN
     value := lookahead.lexeme;
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
@@ -487,11 +474,10 @@ VAR
   aliasList : LexQueueT;
 
 BEGIN
-
   LexQueue.New(aliasList);
 
   (* TerminalAlias *)
-  IF matchToken(Token.TerminalIdent, lookahead.token) THEN
+  IF matchToken(Token.TerminalIdent, lookahead) THEN
     AstQueue.Enqueue(aliasList, lookahead.lexeme);
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
@@ -504,7 +490,7 @@ BEGIN
     lookahead := Lexer.consumeSym(lookahead);
 
     (* TerminalAlias *)
-    IF matchToken(Token.TerminalIdent, lookahead.token) THEN
+    IF matchToken(Token.TerminalIdent, lookahead) THEN
       AstQueue.Enqueue(aliasList, lookahead.lexeme)
     ELSE (* resync *)
       lookahead := skipToMatchTokenOrSet(Token.Comma, Token.Equal)
@@ -512,7 +498,7 @@ BEGIN
   END; (* WHILE *)
 
   (* '=' *)
-  IF matchToken(Token.Equal, lookahead.token) THEN
+  IF matchToken(Token.Equal, lookahead) THEN
     lookahead := Lexer.consumeSym(lookahead)
   ELSE (* resync *)
     lookahead := skipToMatchTokenOrSet
@@ -520,7 +506,7 @@ BEGIN
   END; (* IF *)
 
   (* termAliasValue *)
-  IF matchSet(FIRST(termAliasValue), lookahead.token) THEN
+  IF matchSet(FIRST(termAliasValue), lookahead) THEN
     value := termAliasValue(lookahead)
   ELSE (* resync *)
     lookahead := skipToMatchSet(FOLLOW(TermAliasDef));
@@ -549,7 +535,6 @@ VAR
   value : StringT;
 
 BEGIN
-
   (* TerminalIdent | *)
   IF lookahead.token = Token.TerminalIdent THEN
     value := lookahead.lexeme;
@@ -581,7 +566,6 @@ VAR
   value : StringT;
 
 BEGIN
-
   value := lookahead.lexeme;
 
   (* String | QuotedLowerLetter | QuotedUpperLetter |
@@ -593,8 +577,6 @@ BEGIN
   ELSE
     astNode := AST.NewTerminalNode(AstNodeType.CharCode, value)
   END; (* IF *)
-
-  lookahead := Lexer.consumeSym(lexer);
 
   RETURN astNode
 END literal;
@@ -615,20 +597,19 @@ VAR
   astNode, expr : AstT;
 
 BEGIN
-
   (* NonTerminalIdent *)
   ident := lookahead.lexeme;
   lookahead := Lexer.consumeSym(lexer)
 
   (* ':=' *)
-  IF matchToken(Token.Assign, lookahead.token) THEN
+  IF matchToken(Token.Assign, lookahead) THEN
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
     lookahead := skipToMatchSetOrSet(FIRST(Expression), FOLLOW(Expression))
   END; (* IF *)
 
   (* expression *)
-  IF matchSet(FIRST(expression), lookahead.token) THEN
+  IF matchSet(FIRST(expression), lookahead) THEN
     expr := expression(lookahead)
   ELSE (* resync *)
     lookahead := skipToMatchSet(FOLLOW(Expression));
@@ -657,7 +638,6 @@ VAR
   termList : AstQueueT;
 
 BEGIN
-
   AstQueue.New(termList);
 
   (* term *)
@@ -670,7 +650,7 @@ BEGIN
     lookahead := Lexer.consumeSym(lexer);
 
     (* term *)
-    IF matchSet(FIRST(Term), lookahead.token) THEN
+    IF matchSet(FIRST(Term), lookahead) THEN
       termNode := term(lookahead);
       AstQueue.Enqueue(termList, termNode)
     ELSE (* resync *)
@@ -701,7 +681,6 @@ VAR
   simpleTermList : AstQueueT;
 
 BEGIN
-
   AstQueue.New(simpleTermList);
 
   (* simpleTerm+ *)
@@ -840,7 +819,7 @@ BEGIN
   ELSE (* resync *)
 
   (* ':=' *)
-  IF matchToken(Token.Assign, lookahead.token) THEN
+  IF matchToken(Token.Assign, lookahead) THEN
     lookahead := Lexer.consumeSym(lexer)
   ELSE (* resync *)
     lookahead :=
@@ -848,7 +827,7 @@ BEGIN
   END; (* IF *)
 
   (* terminalValue *)
-  IF matchSet(FIRST(TerminalValue), lookahead.token) THEN
+  IF matchSet(FIRST(TerminalValue), lookahead) THEN
     value := terminalValue(lookahead)
   ELSE (* resync *)
     lookahead := skipToMatchSet(FOLLOW(TerminalValue));
@@ -918,7 +897,7 @@ BEGIN
     lookahead := Lexer.consumeSym(lexer);
 
     (* term *)
-    IF matchSet(FIRST(TerminalTerm), lookahead.token) THEN
+    IF matchSet(FIRST(TerminalTerm), lookahead) THEN
       termNode := term(lookahead);
       AstQueue.Enqueue(termList, termNode)
     ELSE (* resync *)
@@ -1022,7 +1001,6 @@ VAR
   astNode : AstT;
 
 BEGIN
-
   (* TerminalIdent | '(' expression ')' *)
   IF lookahead.token = Token.TerminalIdent :
     astNode :=
@@ -1038,7 +1016,7 @@ BEGIN
     astNode := terminalExpression(lookahead)
 
     (* ')' *)
-    IF matchToken(Token.RightParen) THEN
+    IF matchToken(Token.RightParen, lookahead) THEN
       lookahead := Lexer.consumeSym(lexer)
     ELSE
       lookahead := skipToMatchSet(FOLLOW(Factor))
@@ -1063,12 +1041,11 @@ VAR
   astNode, termDef : AstT;
 
 BEGIN
-
   (* '.' *)
   lookahead := Lexer.consumeSym(lexer);
 
   (* terminalDef *)
-  IF matchSet(FIRST(TerminalDef), lookahead.token) THEN
+  IF matchSet(FIRST(TerminalDef), lookahead) THEN
     termDef := terminalDef(lookahead);
     astNode := AST.NewNode(AstNodeType.FragmentDef, termDef)
   ELSE (* resync *)
@@ -1094,12 +1071,11 @@ VAR
   astNode, termDef : AstT;
 
 BEGIN
-
   (* '*' *)
   lookahead := Lexer.consumeSym(lexer);
 
   (* terminalDef *)
-  IF matchSet(FIRST(TerminalDef), lookahead.token) THEN
+  IF matchSet(FIRST(TerminalDef), lookahead) THEN
     termDef := terminalDef(lookahead);
     astNode := AST.NewNode(AstNodeType.NonSemanticDef, termDef)
   ELSE (* resync *)
@@ -1126,7 +1102,6 @@ VAR
   astNode : AstT;
 
 BEGIN
-
   CASE lookahead.token OF
     (* String | *)
   | Token.String :
@@ -1153,7 +1128,6 @@ BEGIN
   ELSE
     astNode := AST.NewTerminalNode(AstNodeType.String, lookahead.lexeme);
     lookahead := Lexer.consumeSym(lexer)
-
   END; (* CASE *)
 
   RETURN astNode
@@ -1175,7 +1149,6 @@ VAR
   left, right : StringT;
 
 BEGIN
-
   (* QuotedLowerLetter *)
   left := lookahead.lexeme;
   lookahead := Lexer.consumeSym(lexer);
@@ -1185,7 +1158,7 @@ BEGIN
     lookahead := Lexer.consumeSym(lexer);
 
     (* QuotedLowerLetter *)
-    IF matchToken(Token.QuotedLowerLetter, lookahead.token) THEN
+    IF matchToken(Token.QuotedLowerLetter, lookahead) THEN
       right := lookahead.lexeme;
       lookahead := Lexer.consumeSym(lexer)
 
@@ -1193,7 +1166,6 @@ BEGIN
       right := NIL;
       lookahead := skipToMatchSet(FOLLOW(QuotedLowerLetterOrRange))
     END (* IF *)
-
   ELSE
     right := NIL
   END;
@@ -1220,7 +1192,6 @@ VAR
   left, right : StringT;
 
 BEGIN
-
   (* QuotedUpperLetter *)
   left := lookahead.lexeme;
   lookahead := Lexer.consumeSym(lexer);
@@ -1230,7 +1201,7 @@ BEGIN
     lookahead := Lexer.consumeSym(lexer);
 
     (* QuotedUpperLetter *)
-    IF matchToken(Token.QuotedUpperLetter, lookahead.token) THEN
+    IF matchToken(Token.QuotedUpperLetter, lookahead) THEN
       right := lookahead.lexeme;
       lookahead := Lexer.consumeSym(lexer)
 
@@ -1238,7 +1209,6 @@ BEGIN
       right := NIL;
       lookahead := skipToMatchSet(FOLLOW(QuotedUpperLetterOrRange))
     END (* IF *)
-
   ELSE
     right := NIL
   END;
@@ -1265,7 +1235,6 @@ VAR
   left, right : StringT;
 
 BEGIN
-
   (* QuotedDigit *)
   left := lookahead.lexeme;
   lookahead := Lexer.consumeSym(lexer);
@@ -1275,7 +1244,7 @@ BEGIN
     lookahead := Lexer.consumeSym(lexer);
 
     (* QuotedDigit *)
-    IF matchToken(Token.QuotedDigit, lookahead.token) THEN
+    IF matchToken(Token.QuotedDigit, lookahead) THEN
       right := lookahead.lexeme;
       lookahead := Lexer.consumeSym(lexer)
 
@@ -1283,7 +1252,6 @@ BEGIN
       right := NIL;
       lookahead := skipToMatchSet(FOLLOW(QuotedDigitOrRange))
     END (* IF *)
-
   ELSE
     right := NIL
   END;
@@ -1311,7 +1279,6 @@ VAR
   left, right : StringT;
 
 BEGIN
-
   (* CharCode *)
   left := lookahead.lexeme;
   lookahead := Lexer.consumeSym(lexer);
@@ -1321,7 +1288,7 @@ BEGIN
     lookahead := Lexer.consumeSym(lexer);
 
     (* CharCode *)
-    IF matchToken(Token.CharCode, lookahead.token) THEN
+    IF matchToken(Token.CharCode, lookahead) THEN
       right := lookahead.lexeme;
       lookahead := Lexer.consumeSym(lexer)
 
@@ -1329,7 +1296,6 @@ BEGIN
       right := NIL;
       lookahead := skipToMatchSet(FOLLOW(CharCodeOrRange))
     END (* IF *)
-
   ELSE
     right := NIL
   END;
@@ -1409,6 +1375,104 @@ BEGIN
     RETURN FALSE
   END (* IF *)
 END matchSet;
+
+
+(* ---------------------------------------------------------------------------
+ * private function skipToMatchTokenOrToken(token1, token2)
+ * ---------------------------------------------------------------------------
+ * Consumes symbols until the lookahead symbol's token matches token1 or
+ * token2.  Returns the new lookahead symbol.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE skipToMatchTokenOrToken ( token1, token2 : TokenT ) : SymbolT;
+
+VAR
+  lookahead : SymbolT;
+
+BEGIN
+  lookahead := Lexer.lookaheadSym(lexer);
+
+  (* skip symbols until lookahead token matches token1 or token2 *)
+  WHILE (lookahead.token # token1) AND (lookahead.token # token2) DO
+    lookahead = Lexer.consumeSym(lexer)
+  END; (* WHILE *)
+
+  RETURN lookahead
+END skipToMatchTokenOrToken;
+
+
+(* ---------------------------------------------------------------------------
+ * private function skipToMatchSet(set)
+ * ---------------------------------------------------------------------------
+ * Consumes symbols until the lookahead symbol's token matches any token in
+ * set.  Returns the new lookahead symbol.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE skipToMatchSet ( set : TokenSetT ) : SymbolT;
+
+VAR
+  lookahead : SymbolT;
+
+BEGIN
+  lookahead := Lexer.lookaheadSym(lexer);
+
+  (* skip symbols until lookahead matches any token in set *)
+  WHILE NOT TokenSet.isElement(set, lookahead.token) DO
+    lookahead = Lexer.consumeSym(lexer)
+  END; (* WHILE *)
+
+  RETURN lookahead
+END skipToMatchSet;
+
+
+(* ---------------------------------------------------------------------------
+ * private function skipToMatchSetOrSet(set1, set2)
+ * ---------------------------------------------------------------------------
+ * Consumes symbols until the lookahead symbol's token matches any token in
+ * set1 or set2.  Returns the new lookahead symbol.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE skipToMatchSetOrSet ( set1, set2 : TokenSetT ) : SymbolT;
+
+VAR
+  lookahead : SymbolT;
+
+BEGIN
+  lookahead := Lexer.lookaheadSym(lexer);
+
+  (* skip symbols until lookahead matches any token in set1 or set2 *)
+  WHILE NOT TokenSet.isElement(set1, lookahead.token) AND
+    NOT TokenSet.isElement(set2, lookahead.token) DO
+    lookahead = Lexer.consumeSym(lexer)
+  END; (* WHILE *)
+
+  RETURN lookahead
+END skipToMatchSetOrSet;
+
+
+(* ---------------------------------------------------------------------------
+ * private function skipToMatchTokenOrSet(token, set)
+ * ---------------------------------------------------------------------------
+ * Consumes symbols until the lookahead symbol's token matches token or any
+ * token in set.  Returns the new lookahead symbol.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE skipToMatchTokenOrSet ( token : TokenT; set : TokenSetT ) : SymbolT;
+
+VAR
+  lookahead : SymbolT;
+
+BEGIN
+  lookahead := Lexer.lookaheadSym(lexer);
+
+  (* skip symbols until lookahead matches token or any token in set *)
+  WHILE (lookahead.token # token) AND
+    NOT TokenSet.isElement(set, lookahead.token) DO
+    lookahead = Lexer.consumeSym(lexer)
+  END; (* WHILE *)
+
+  RETURN lookahead
+END skipToMatchTokenOrSet;
 
 
 END Parser.
