@@ -95,7 +95,7 @@ BEGIN
 
   (* pase EBNF specification *)
 
-  lookahead := specification(ast);
+  ast := specification(lookahead);
 
   (* TO DO: verify lookahead *)
   (* TO DO: get lexical stats from lexer *)
