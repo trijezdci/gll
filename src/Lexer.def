@@ -41,7 +41,7 @@ FROM String IMPORT StringT;
 
 (* Lexer Type *)
 
-TYPE Lexer = OPAQUE;
+TYPE Lexer; (* OPAQUE *)
 
 TYPE LexerT = Lexer; (* for unqualified use *)
 
