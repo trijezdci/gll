@@ -1,0 +1,100 @@
+(*!m2pim*)
+
+(* *************************************************************************
+ * Grammar Tool for LL(1) Grammars
+ *
+ * Copyright (C) 2018 Benjamin Kowarsch
+ *
+ * Synopsis
+ *
+ * GLL is a tool to verify and visualise LL(1) grammars.  It parses EBNF
+ * specifications of grammars, calculates FIRST and FOLLOW sets, reports
+ * any LL(1) violations and generates (railroad) syntax diagrams.
+ *
+ * File
+ *
+ * Lexer.def
+ *
+ * Interface of EBNF lexer module.
+ *
+ * License
+ *
+ * GLL is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License Version 2 (LGPL2)
+ * as published by the Free Software Foundation.
+ *
+ * GLL is distributed in the hope that it will be useful,  but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  Refer to the license for details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with GLL.  If not, please visit <http://www.gnu.org/licenses/>.
+ * ************************************************************************* *)
+
+DEFINITION MODULE Lexer;
+
+(* Lexer for EBNF grammar specifications *)
+
+FROM Symbol IMPORT SymbolT;
+FROM String IMPORT StringT;
+
+
+(* Lexer Type *)
+
+TYPE Lexer = OPAQUE;
+
+TYPE LexerT = Lexer; (* for unqualified use *)
+
+
+(* Lexer Status *)
+
+TYPE Status =
+  ( Success,
+    AlreadyInitialised,
+    UnableToAllocate,
+    IllegalSymbolFound,
+    UnescapedBackslash,
+    IllegalCharInCharOrString,
+    EndOfLineInCharOrString,
+    LexemeCapacityExceded,
+    CommentNestingLimitExceded,
+    PrematureEndOfFile );
+
+
+(* Operations *)
+
+PROCEDURE New ( VAR lexer : Lexer; filename : StringT; VAR s : Status );
+(* Create newly allocated and initialised lexer instance associated with
+   source file filename.  Passes back the status of the operation in s. *)
+
+
+PROCEDURE GetSym ( lexer : Lexer; VAR current, next : SymbolT );
+(* Passes back the current lookahead symbol in current and consumes it.
+   Passes back the new lookahead symbol in next without consuming it. *)
+
+
+PROCEDURE consumeSym ( lexer : Lexer ) : SymbolT;
+(* Returns the current lookahead symbol and consumes it. *)
+
+
+PROCEDURE lookaheadSym ( lexer : Lexer ) : SymbolT;
+(* Returns the current lookahead symbol without consuming it. *)
+
+
+PROCEDURE warnCount ( lexer : Lexer ) : CARDINAL;
+ (* Returns the lexer's accumulated warning count. *)
+
+
+PROCEDURE errorCount ( lexer : Lexer ) : CARDINAL;
+ (* Returns the lexer's accumulated error count. *)
+
+
+PROCEDURE status ( lexer : Lexer ) : Status;
+(* Returns the status of the last operation. *)
+
+
+PROCEDURE Release ( VAR lexer : Lexer );
+ (* Release lexer instance. Passes back NIL in lexer if successful. *)
+
+
+END Lexer.
