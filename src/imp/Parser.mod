@@ -200,7 +200,7 @@ BEGIN
 
   END; (* IF *)
 
-  (* (definition ';')+ *)
+  (* ( definition ';' )+ *)
   REPEAT
     (* definition *)
     defNode := definition(lookahead);
