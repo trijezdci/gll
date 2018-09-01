@@ -45,7 +45,7 @@ reserved
 
 specification :=
   GRAMMAR grammarIdent ';'
-  ( RESERVED reswordList )?
+  ( RESERVED reswordList ';' )?
   ( definition ';' )+
   ENDG grammarIdent '.'
   EndOfFile
@@ -171,7 +171,7 @@ terminalDef :=
 /* Terminal Value */
 
 terminalValue :=
-  terminalExpression | '<platform dependent>'
+  terminalExpression | '<platform-dependent>'
   ;
 
 
