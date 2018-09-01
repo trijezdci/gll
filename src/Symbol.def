@@ -1,0 +1,56 @@
+(*!m2pim*)
+
+(* *************************************************************************
+ * Grammar Tool for LL(1) Grammars
+ *
+ * Copyright (C) 2018 Benjamin Kowarsch
+ *
+ * Synopsis
+ *
+ * GLL is a tool to verify and visualise LL(1) grammars.  It parses EBNF
+ * specifications of grammars, calculates FIRST and FOLLOW sets, reports
+ * any LL(1) violations and generates (railroad) syntax diagrams.
+ *
+ * File
+ *
+ * Symbol.def
+ *
+ * Symbol Type for EBNF Lexer.
+ *
+ * License
+ *
+ * GLL is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License Version 2 (LGPL2)
+ * as published by the Free Software Foundation.
+ *
+ * GLL is distributed in the hope that it will be useful,  but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  Refer to the license for details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with GLL.  If not, please visit <http://www.gnu.org/licenses/>.
+ * ************************************************************************* *)
+
+DEFINITION MODULE Symbol;
+
+(* Symbol Definition *)
+
+FROM Token IMPORT TokenT;
+FROM Lexeme IMPORT LexemeT;
+FROM Diagnostic IMPORT DiagnosticT;
+
+
+(* Symbol to be returned by lexer *)
+
+TYPE Symbol = RECORD
+  token : TokenT;
+  line, col : CARDINAL;
+  lexeme : LexemeT;
+  diagnostic : DiagnosticT
+END; (* Symbol *)
+
+
+TYPE SymbolT = Symbol; (* for unqualified use *)
+
+
+END Symbol.
