@@ -248,26 +248,33 @@ END specification;
 PROCEDURE reswordList ( VAR lookahead : SymbolT ) : AstT;
 
 VAR
-  astNode : AstT;
+  astNode, defNode : AstT;
+  defList : AstQueueT;
 
 BEGIN
+  AstQueue.New(defList);
+
   (* reswordDef *)
-  astNode := reswordDef(lookahead);
+  defNode := reswordDef(lookahead);
+  AstQueue.Enqueue(defList, defNode);
 
   (* ( ',' reswordDef )* *)
   WHILE lookahead.token = Token.Comma DO
-
     (* ',' *)
     lookahead := Lexer.consumeSym(lexer);
 
     (* reswordDef *)
     IF matchSet(FIRST(ReswordDef), lookahead) THEN
-      astNode := reswordDef(lookahead)
+      astNode := reswordDef(lookahead);
+      AstQueue.Enqueue(defList, defNode)
     ELSE (* resync *)
       lookahead := skipToMatchTokenOrSetOrSet
         (Token.Comma, FIRST(ReswordDef), FOLLOW(ReswordDef))
     END (* IF *)
   END; (* WHILE *)
+
+  (* build AST node *)
+  astNode := AST.NewListNode(AstNodeType.ResWordList, defList);
 
   RETURN astNode
 END reswordList;
@@ -838,7 +845,7 @@ END terminalDef;
  * Private function terminalValue(lookahead)
  * ---------------------------------------------------------------------------
  * terminalValue :=
- *   terminalExpression | '<platform dependent>'
+ *   terminalExpression | '<platform-dependent>'
  *   ;
  * ---------------------------------------------------------------------------
  *)
@@ -852,7 +859,7 @@ BEGIN
   IF lookahead.token # Token.PlatformDependent THEN
     astNode := terminalExpression(lookahead)
 
-  (* '<platform dependent>' *)
+  (* '<platform-dependent>' *)
   ELSE
     astNode := AST.NewTerminalNode(AstNodeType.PlatformDependent)
   END; (* IF *)
