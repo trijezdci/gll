@@ -193,15 +193,14 @@ BEGIN
 
   END; (* IF *)
 
-  (* get current position *)
-  Source.GetLineAndColumn(source, sym.line, sym.column);
-
   (* skip any disabled code section *)
   WHILE next = "?" AND Source.la2Char() = "<" AND sym.column = 1 DO
     MatchLex.DisabledCodeBlock(source);
     next := Source.lookahead(source);
-    Source.GetLineAndColumn(source, sym.line, sym.column)
   END; (* WHILE *)
+
+  (* get current position *)
+  Source.GetLineAndColumn(source, sym.line, sym.column);
 
   (* check for end-of-file *)
   IF Source.eof(source) THEN
