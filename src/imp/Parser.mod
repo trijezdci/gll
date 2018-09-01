@@ -147,7 +147,7 @@ END GetStats;
  * ---------------------------------------------------------------------------
  * specification :=
  *   GRAMMAR ident ';'
- *   ( RESERVED reswordList )?
+ *   ( RESERVED reswordList ';' )?
  *   ( definition ';' )+
  *   ENDG ident '.'
  *   ;
@@ -179,7 +179,7 @@ BEGIN
     lookahead := skipToMatchSetOrSet(First(Definition), FOLLOW(Definition))
   END; (* IF *)
 
-  (* ( RESERVED reswordList )? *)
+  (* ( RESERVED reswordList ';' )? *)
   IF lookahead.token = Token.Reserved THEN
     (* RESERVED *)
     lookahead := Lexer.consumeSym(lexer);
@@ -189,7 +189,15 @@ BEGIN
       astNode := reswordList(lookahead)
     ELSE (* resync *)
       lookahead := skipToMatchSet(FIRST(Definition))
+    END; (* IF *)
+
+    (* ';' *)
+    IF matchToken(Token.Semicolon, lookahead) THEN
+      lookahead := Lexer.consumeSym(lexer)
+    ELSE (* resync *)
+      skipToMatchSet(FIRST(Definition))
     END (* IF *)
+
   END; (* IF *)
 
   (* (definition ';')+ *)
