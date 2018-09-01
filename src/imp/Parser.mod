@@ -188,14 +188,14 @@ BEGIN
     IF matchSet(FIRST(ReswordList), lookahead) THEN
       astNode := reswordList(lookahead)
     ELSE (* resync *)
-      lookahead := skipToMatchSet(FIRST(Definition))
+      lookahead := skipToMatchTokenOrSet(Token.Semicolon, FIRST(Definition))
     END; (* IF *)
 
     (* ';' *)
     IF matchToken(Token.Semicolon, lookahead) THEN
       lookahead := Lexer.consumeSym(lexer)
     ELSE (* resync *)
-      skipToMatchSet(FIRST(Definition))
+      lookahead := skipToMatchSet(FIRST(Definition))
     END (* IF *)
 
   END; (* IF *)
