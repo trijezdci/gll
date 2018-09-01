@@ -1,0 +1,131 @@
+(*!m2pim*)
+
+(* *************************************************************************
+ * Grammar Tool for LL(1) Grammars
+ *
+ * Copyright (C) 2018 Benjamin Kowarsch
+ *
+ * Synopsis
+ *
+ * GLL is a tool to verify and visualise LL(1) grammars.  It parses EBNF
+ * specifications of grammars, calculates FIRST and FOLLOW sets, reports
+ * any LL(1) violations and generates (railroad) syntax diagrams.
+ *
+ * File
+ *
+ * Token.def
+ *
+ * Interface of EBNF Token module.
+ *
+ * License
+ *
+ * GLL is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License Version 2 (LGPL2)
+ * as published by the Free Software Foundation.
+ *
+ * GLL is distributed in the hope that it will be useful,  but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  Refer to the license for details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with GLL.  If not, please visit <http://www.gnu.org/licenses/>.
+ * ************************************************************************* *)
+
+DEFINITION MODULE Token;
+
+(* Token Definitions for GLL EBNF *)
+
+
+(* Semantic Tokens *)
+
+TYPE Semantic = Token [Invalid..EOF];
+
+
+(* All Tokens *)
+
+TYPE Token =
+  ( Invalid,              (* 0 *)
+
+  (* Reserved Words *)
+    Alias,                (* 1 *)
+    EndG,                 (* 2 *)
+    Grammar,              (* 3 *)
+    Reserved,             (* 4 *)
+
+  (* Identifiers *)
+    ReswordIdent,         (* 5 *)
+    NonTermIdent,         (* 6 *)
+    TerminalIdent,        (* 7 *)
+
+  (* Literals *)
+    CharCode,             (* 8 *)
+    QuotedDigit,          (* 9 *)
+    QuotedLowerLetter,   (* 10 *)
+    QuotedUpperLetter,   (* 11 *)
+    QuotedNonAlphaNum,   (* 12 *)
+    String,              (* 13 *)
+
+  (* Punctuation *)
+    Dot,                 (* 14 *)
+    DotDot,              (* 15 *)
+    Comma,               (* 16 *)
+    Semicolon,           (* 17 *)
+    Equal,               (* 18 *)
+    Assign,              (* 19 *)
+
+  (* Paired Delimiters *)
+    LParen,              (* 20 *)
+    RParen,              (* 21 *)
+
+  (* Operators *)
+
+    (* level-1 *)
+    VerticalBar,        (* 22 *)
+
+    (* level-2 *)
+    Plus,               (* 23 *)
+    Asterisk,           (* 24 *)   (* also used as punctuation *)
+    QMark,              (* 25 *)
+
+  (* End Of File Marker *)
+    EOF,                (* 26 *)
+
+  (* Pragmas & Comments *)
+    Pragma,             (* 27 *)
+    BlockComment );     (* 28 *)
+
+
+TYPE TokenT = Token; (* for unqualified use *)
+
+
+(* Functions To Determine Token Classification *)
+
+PROCEDURE isResWord ( t : Token ) : BOOLEAN;
+ (* Returns TRUE if t is a reserved word, otherwise FALSE. *)
+
+
+PROCEDURE isIdent ( t : Token ) : BOOLEAN;
+ (* Returns TRUE if t is an identifier, otherwise FALSE. *)
+
+
+PROCEDURE isLiteral ( t : Token ) : BOOLEAN;
+ (* Returns TRUE if t is a character or string, otherwise FALSE. *)
+
+
+PROCEDURE isOperL1 ( t : Token ) : BOOLEAN;
+ (* Returns TRUE if t is a level-1 operator, otherwise FALSE. *)
+
+
+PROCEDURE isOperL2 ( t : Token ) : BOOLEAN;
+ (* Returns TRUE if t is a level-2 operator, otherwise FALSE. *)
+
+
+PROCEDURE isPragma ( t : Token ) : BOOLEAN;
+ (* Returns TRUE if t is a pragma, otherwise FALSE. *)
+
+
+PROCEDURE isComment ( t : Token ) : BOOLEAN;
+ (* Returns TRUE if t is a comment, otherwise FALSE. *)
+
+
+END Token.
