@@ -44,7 +44,7 @@ FROM Diagnostic IMPORT DiagnosticT;
 
 TYPE Symbol = RECORD
   token : TokenT;
-  line, col : CARDINAL;
+  line, column : CARDINAL;
   lexeme : StringT;
   diagnostic : DiagnosticT
 END; (* Symbol *)
