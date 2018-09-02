@@ -42,43 +42,82 @@ FROM Diagnostic IMPORT DiagnosticT;
 
 (* Semantic Symbols *)
 
-PROCEDURE NonTerminal ( source : SourceT; VAR token : TokenT );
-(* Matches the input in source to a non-terminal identifier
-   and consumes it. *)
+(* ---------------------------------------------------------------------------
+ * Procedure MatchLex.reswordOrIdent(source, symbol)
+ * ---------------------------------------------------------------------------
+ * Matches the input in source  to a reserved word or identifier.  If there is
+ * a match, it consumes the symbol's lexeme in source, passes back the matched
+ * symbol in symbol  and returns TRUE.  Otherwise, it does NOT consume any in-
+ * put, passes back a diagnostic symbol and returns FALSE.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE reswordOrIdent ( source : SourceT; VAR sym : SymbolT ) : BOOLEAN;
 
 
-PROCEDURE TerminalOrResword ( source : SourceT; VAR token : TokenT );
-(* Matches the input in source to a terminal identifier or reserved word
-   and consumes it. *)
+(* ---------------------------------------------------------------------------
+ * Procedure MatchLex.quotedLiteral(source, symbol)
+ * ---------------------------------------------------------------------------
+ * Matches the input in source  to a  quoted literal.  If there is a match, it
+ * consumes the symbol's lexeme  in source,  passes back the matched symbol in
+ * symbol  and returns TRUE.  Otherwise, it does NOT consume the input, passes
+ * back a diagnostic symbol and returns FALSE.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE quotedLiteral ( source : SourceT; VAR sym : SymbolT ) : BOOLEAN;
 
 
-PROCEDURE QuotedLiteral ( source : SourceT; VAR token : TokenT );
-(* Matches the input in source to a quoted literal and consumes it. *)
+(* ---------------------------------------------------------------------------
+ * Procedure MatchLex.charCodeLiteral(source, symbol)
+ * ---------------------------------------------------------------------------
+ * Matches  the input  in source  to a  character code literal.  If there is a
+ * match, it consumes the symbol's lexeme in source,  passes back  the matched
+ * symbol  and returns TRUE.  Otherwise, it does NOT consume the input, passes
+ * back a diagnostic symbol and returns FALSE.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE charCodeLiteral ( source : SourceT; VAR sym : SymbolT ) : BOOLEAN;
 
 
 (* Non-Semantic Symbols *)
 
-PROCEDURE Pragma ( source : SourceT );
-(* Matches the input in source to an opening pragma delimiter
-   and consumes the pragma, including its closing delimiter. *)
+(* ---------------------------------------------------------------------------
+ * Procedure MatchLex.pragma(source, symbol)
+ * ---------------------------------------------------------------------------
+ * Matches the input in source to a pragma.  If there is a match,  it consumes
+ * the symbol's lexeme in source,  passes back the matched symbol  and returns
+ * TRUE.  If FALSE is passed in  for requireLexeme,  the  lexeme field  of the
+ * passed back symbol will be set to NIL.  If there is  no match,  it does NOT
+ * consume the input,  passes back a diagnostic symbol and returns FALSE.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE pragma
+  ( source : SourceT; requireLexeme : BOOLEAN; VAR sym : SymbolT ) : BOOLEAN;
 
 
-PROCEDURE BlockComment ( source : SourceT );
-(* Matches the input in source to an opening block comment delimiter
-   and consumes the comment, including its closing delimiter. *)
+(* ---------------------------------------------------------------------------
+ * Procedure MatchLex.blockComment(source, symbol)
+ * ---------------------------------------------------------------------------
+ * Matches the input in source  to a  block comment.  If there is a match,  it
+ * consumes the symbol's lexeme in source,  passes back the matched symbol and
+ * returns TRUE.  If FALSE is passed in for requireLexeme, the lexeme field of
+ * the passed back symbol will be set to NIL.  If there is  no match,  it does
+ * NOT consume the input,  passes back a diagnostic symbol and returns FALSE.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE blockComment
+  ( source : SourceT; requireLexeme : BOOLEAN; VAR sym : SymbolT ) : BOOLEAN;
 
 
 (* Disabled Code Sections *)
 
+(* ---------------------------------------------------------------------------
+ * Procedure MatchLex.blockComment(source, symbol)
+ * ---------------------------------------------------------------------------
+ * Matches the input in source to an opening disabled code block delimiter and
+ * consumes the disabled code block, including its closing delimiter.
+ * ---------------------------------------------------------------------------
+ *)
 PROCEDURE DisabledCodeBlock ( source : SourceT );
-(* Matches the input in source to an opening disabled code block delimiter
-   and consumes the disabled code block, including its closing delimiter. *)
-
-
-(* Diagnostics *)
-
-PROCEDURE GetDiag ( diag : DiagnosticT );
-(* Passes the diagnostics of the last operation. *)
 
 
 END MatchLex.
