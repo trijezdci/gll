@@ -48,11 +48,12 @@ FROM Symbol IMPORT SymbolT;
 TYPE Lexer = POINTER TO LexerDescriptor;
 
 TYPE LexerDescriptor = RECORD
-  source     : SourceT;
-  nextSymbol : SymbolT;
+  source         : SourceT;
+  nextSymbol     : SymbolT;
+  ignoreComments : BOOLEAN;
   warnings,
-  errors     : CARDINAL;
-  lastStatus : Status
+  errors         : CARDINAL;
+  lastStatus     : Status
 END; (* LexerDescriptor *)
 
 
@@ -106,11 +107,14 @@ BEGIN
   newLexer^.errors := 0;
   newLexer^.lastStatus := Status.Success;
 
+  (* set comment mode *)
+  newLexer^.ignoreComments :=
+    Capabilities.isDisabled(Capabilities.PreserveComments);
+
   (* read the first symbol to be returned *)
   newLexer^.nextSymbol := Lexer.consumeSym(newLexer);
 
-  s := Status.Success;
-  RETURN
+  s := Status.Success
 END New;
 
 
@@ -128,23 +132,21 @@ END New;
  *  TO DO
  * ---------------------------------------------------------------------------
  *)
-PROCEDURE GetSym ( lexer : Lexer; VAR sym, next : SymbolT );
+PROCEDURE GetSym ( lexer : Lexer; VAR sym, nextSym : SymbolT );
 
 BEGIN
   (* nextSymbol holds current lookahead, pass it back in sym *)
   sym := lexer^.nextSymbol;
 
   (* consume the current lookahead,
-     read the new lookahead symbol, pass it back in next *)
-  next := Lexer.consumeSym(lexer);
-
-  RETURN
+     read the new lookahead symbol, pass it back in nextSym *)
+  Lexer.ConsumeSym(lexer, nextSym)
 END GetSym;
 
 
 (* ---------------------------------------------------------------------------
- * public function consumeSym(lexer)
- *  consumes current lookahead symbol and returns new lookahead symbol
+ * public procedure ConsumeSym(lexer)
+ *  consumes current lookahead symbol and passes back new lookahead symbol
  * ---------------------------------------------------------------------------
  * pre-conditions:
  *  TO DO
@@ -156,224 +158,206 @@ END GetSym;
  *  TO DO
  * ---------------------------------------------------------------------------
  *)
-PROCEDURE consumeSym ( lexer : Lexer ) : SymbolT;
+PROCEDURE ConsumeSym ( lexer : Lexer; VAR nextSym : SymbolT );
 
 VAR
-  ch, next, la2 : CHAR;
-  source : Source;
-  sym : SymbolT;
+  source : SourceT;
+  lexeme : StringT;
+  nextChar : CHAR;
+  line, column : CARDINAL;
 
 BEGIN
   (* ensure source is valid *)
   IF lexer = NIL THEN
-  (* TO DO: report and handle error *)
-    RETURN Symbol.NilSymbol
+    (* TO DO: report error *)
+    RETURN
   END;
 
   (* shorthand *)
   source := lexer^.source;
 
-  (* all decisions are based on lookahead *)
-  next := source.lookaheadChar();
+  (* all decisions are based on lookahead character *)
+  nextChar := source.lookaheadChar();
 
-  (* skip any whitespace, tab and new line *)
-  WHILE NOT Source.eof(source) AND
-    (next = ASCII.SPACE OR next = ASCII.TAB OR next = ASCII.NEWLINE) DO
-    next := Source.consumeChar(source)
-  END; (* WHILE *)
+  (* skip non-semantic symbols *)
+  WHILE nonSemanticLead(nextChar) DO
+    (* skip whitespace, tab and newline *)
+    WHILE NOT Source.eof(source) AND
+      ((nextChar = " ") OR
+       (nextChar = ASCII.TAB) OR
+       (nextChar = ASCII.NEWLINE)) DO
+      nexChar := Source.consumeChar(source)
+    END; (* WHILE *)
 
-  (* skip comments unless comments are to be preserved *)
-  IF Capabilities.isDisabled(Capabilities.PreserveComments) THEN
+    (* skip pragmas *)
+    IF lexer^.ignorePragmas THEN
+      WHILE (nextChar = "/") AND (Source.la2Char(source) = "*") DO
+        nextChar := MatchLex.skipPragma(source)
+      END (* WHILE *)
+    END; (* IF *)
 
-    (* skip any block comment *)
-    WHILE next = "/" AND Source.la2Char(source) = "*" DO
-      MatchLex.BlockComment(source);
-      next := Source.lookahead(source)
+    (* skip comments *)
+    IF lexer^.ignoreComments THEN
+      WHILE (nextChar = "/") AND (Source.la2Char(source) = "*") DO
+        nextChar := MatchLex.skipBlockComment(source)
+      END (* WHILE *)
+    END; (* IF *)
+
+    (* skip disabled code block *)
+    WHILE (nextChar = "?") AND (Source.la2Char(source) = "<") DO
+      nextChar := MatchLex.skipDisabledCodeBlock(source)
     END (* WHILE *)
-
-  END; (* IF *)
-
-  (* skip any disabled code section *)
-  WHILE next = "?" AND Source.la2Char() = "<" AND sym.column = 1 DO
-    MatchLex.DisabledCodeBlock(source);
-    next := Source.lookahead(source);
   END; (* WHILE *)
 
   (* get current position *)
-  Source.GetLineAndColumn(source, sym.line, sym.column);
+  Source.GetLineAndColumn(source, line, column);
 
   (* check for end-of-file *)
   IF Source.eof(source) THEN
-    sym.token := TokenT.EOF;
-    sym.lexeme := 0
+    Symbol.Set(nextSym, TokenT.EOF, line, column, NIL)
 
   (* check for any other symbol *)
   ELSE
-    CASE next OF
+    CASE nextChar OF
     (* next symbol is quoted literal *)
     | ASCII.SINGLEQUOTE,
       ASCII.DOUBLEQUOTE :
-        Source.MarkLexeme(source, sym.line, sym.column);
-        MatchLex.QuotedLiteral(source, sym.token);
-        Source.CopyLexeme(source, lexer^.dict, sym.lexeme)
+        MatchLex.QuotedLiteral(source, nextSym)
 
-    (* next symbol is "(" or block comment *)
+    (* next symbol is "(" *)
     | "(" :
         (* consume "(" *)
-        next := Source.consumeChar(source);
-        Source.GetLineAndColumn(source, sym.line, sym.column);
-        sym.token := TokenT.LParen;
-        sym.lexeme := Token.lexemeForToken(TokenT.LParen)
+        nextChar := Source.consumeChar(source);
+        lexeme := Token.lexemeForToken(TokenT.LParen);
+        Symbol.Set(nextSym, TokenT.LParen, line, column, lexeme)
 
     (* next symbol is ")" *)
     | ")" :
         (* consume ")" *)
-        next := Source.consumeChar(source);
-        Source.GetLineAndColumn(source, sym.line, sym.column);
-        sym.value := TokenT.RParen;
-        sym.lexeme := Token.lexemeForToken(TokenT.RParen)
+        nextChar := Source.consumeChar(source);
+        lexeme := Token.lexemeForToken(TokenT.LParen);
+        Symbol.Set(nextSym, TokenT.LParen, line, column, lexeme)
 
     (* next symbol is "*" *)
     | "*" :
         (* consume "*" *)
-        next := Source.consumeChar(source);
-        Source.GetLineAndColumn(source, sym.line, sym.column);
-        sym.token := TokenT.Asterisk;
-        sym.lexeme := Token.lexemeForToken(TokenT.Asterisk)
+        nextChar := Source.consumeChar(source);
+        lexeme := Token.lexemeForToken(TokenT.Asterisk);
+        Symbol.Set(nextSym, TokenT.Asterisk, line, column, lexeme)
 
     (* next symbol is "+" *)
     | "+" :
         (* consume "+" *)
-        next := Source.consumeChar(source);
-        Source.GetLineAndColumn(source, sym.line, sym.column);
-        sym.token := TokenT.Plus;
-        sym.lexeme := Token.lexemeForToken(TokenT.Plus)
+        nextChar := Source.consumeChar(source);
+        lexeme := Token.lexemeForToken(TokenT.Plus);
+        Symbol.Set(nextSym, TokenT.Plus, line, column, lexeme)
 
     (* next symbol is "," *)
     | "," :
         (* consume "," *)
-        next := Source.consumeChar(source);
-        Source.GetLineAndColumn(source, sym.line, sym.column);
-        sym.token := TokenT.Comma;
-        sym.lexeme := Token.lexemeForToken(TokenT.Comma)
+        nextChar := Source.consumeChar(source);
+        lexeme := Token.lexemeForToken(TokenT.Comma);
+        Symbol.Set(nextSym, TokenT.Comma, line, column, lexeme)
 
     (* next symbol is "." or ".." *)
     | "." :
         (* consume "." *)
-        next := Source.consumeChar(source);
-        Source.GetLineAndColumn(source, sym.line, sym.column);
+        nextChar := Source.consumeChar(source);
 
-        IF next = "." THEN (* found ".." *)
+        IF nextChar = "." THEN (* found ".." *)
           (* consume second "." *)
-          next := Source.consumeChar(source);
-          sym.token := TokenT.DotDot;
-          sym.lexeme := Token.lexemeForToken(TokenT.DotDot)
+          nextChar := Source.consumeChar(source);
+          lexeme := Token.lexemeForToken(TokenT.DotDot);
+          Symbol.Set(nextSym, TokenT.DotDot, line, column, lexeme)
 
         ELSE (* found sole "." *)
           (* first "." already consumed *)
-          sym.token := TokenT.Dot;
-          sym.lexeme := Token.lexemeForToken(TokenT.Dot)
-
+          sym.lexeme := Token.lexemeForToken(TokenT.Dot);
+          Symbol.Set(nextSym, TokenT.Dot, line, column, lexeme)
         END (* "." and ".." *)
 
-    (* next symbol may be block comment *)
+    (* next symbol may be pragma or block comment *)
     | "/" :
-        IF Capabilities.isEnabled(Capabilities.PreserveComments) THEN
+        IF NOT lexer^.ignoreComments THEN
           IF Source.la2Char(source) = "*" THEN (* found '/*' *)
-            Source.MarkLexeme(source, sym.line, sym.column);
-            MatchLex.BlockComment(source, sym.token);
-            Source.CopyLexeme(source, lexer^.dict, sym.lexeme)
+
+            TO DO
+
           END (* IF *)
         END (* IF *)
 
-    (* next symbol is numeric literal *)
-    | "0" .. "9" :
-        Source.MarkLexeme(source, sym.line, sym.column);
-        MatchLex.NumericLiteral(source, sym.token);
-        Source.CopyLexeme(source, lexer^.dict, sym.lexeme)
+    (* next symbol is character code literal *)
+    | "0" :
+        MatchLex.CharCodeLiteral(source, nextSym)
 
     (* next symbol may be ":=" *)
     | ":" :
         IF Source.la2Char(source) = "=" THEN (* found ':=' *)
-          (* consume ":" and get line and column *)
-          next := Source.consumeChar(source);
-          Source.GetLineAndColumn(source, sym.line, sym.column);
-          (* consume '=' *)
-          next := Source.consumeChar(source);
-          sym.token := TokenT.Assign;
-          sym.lexeme := Token.lexemeForToken(TokenT.Assign)
+          (* consume ":" *)
+          nextChar := Source.consumeChar(source);
+          (* consume "=" *)
+          nextChar := Source.consumeChar(source);
+          lexeme := Token.lexemeForToken(TokenT.Assign);
+          Symbol.Set(nextSym, TokenT.Assign, line, column, lexeme)
         END (* ':=' *)
 
     (* next symbol is ";" *)
     | ";" :
         (* consume ";" *)
-        next := Source.consumeChar(source);
-        Source.GetLineAndColumn(source, sym.line, sym.column);
-        sym.token := TokenT.Semicolon;
-        sym.lexeme := Token.lexemeForToken(TokenT.Semicolon)
+        nextChar := Source.consumeChar(source);
+        lexeme := Token.lexemeForToken(TokenT.Semicolon);
+        Symbol.Set(nextSym, TokenT.Semicolon, line, column, lexeme)
 
-    (* next symbol is annotation *)
+    (* next symbol may be predefined literal *)
     | "<" :
-        Source.MarkLexeme(source, sym.line, sym.column);
-        MatchLex.Annotation(source, sym.token);
-        Source.CopyLexeme(source, lexer^.dict, sym.lexeme)
+        MatchLex.PredefineLiteral(source, nextSym)
 
     (* next symbol is "=" *)
     | "=" :
         (* consume "=" *)
-        next := Source.consumeChar(source);
-        Source.GetLineAndColumn(source, sym.line, sym.column);
-        sym.token := TokenT.Equal;
-        sym.lexeme := Token.lexemeForToken(TokenT.Equal)
+        nextChar := Source.consumeChar(source);
+        lexeme := Token.lexemeForToken(TokenT.Equal);
+        Symbol.Set(nextSym, TokenT.Equal, line, column, lexeme)
 
     (* next symbol is "?" *)
     | "?" :
         (* consume "?" *)
-        next := Source.consumeChar(source);
-        Source.GetLineAndColumn(source, sym.line, sym.column);
-        sym.token := TokenT.QMark;
-        sym.lexeme := Token.lexemeForToken(TokenT.QMark)
+        nextChar := Source.consumeChar(source);
+        lexeme := Token.lexemeForToken(TokenT.QMark);
+        Symbol.Set(nextSym, TokenT.QMark, line, column, lexeme)
 
-    (* next symbol is terminal identifier or reserved word *)
-    | "A" .. "Z" :
-        Source.MarkLexeme(source, sym.line, sym.column);
-        MatchLex.IdentOrResword(source, sym.token);
-        Source.CopyLexeme(source, lexer^.dict, sym.lexeme)
-
-
-    (* next symbol is non-terminal identifier *)
-    | "a" .. "z" :
-        Source.MarkLexeme(source, sym.line, sym.column);
-        MatchLex.Ident(source, sym.token);
-        Source.CopyLexeme(source, lexer^.dict, sym.lexeme)
+    (* next symbol is reserved word or identifier *)
+    | "A" .. "Z",
+      "a" .. "z" :
+        MatchLex.ReswordOrIdent(source, nextSym)
 
     (* next symbol is "|" *)
     | "|" :
         (* consume "|" *)
-        next := Source.consumeChar(source);
-        Source.GetLineAndColumn(source, sym.line, sym.column);
-        sym.token := TokenT.VerticalBar;
-        sym.lexeme := Token.lexemeForToken(TokenT.VerticalBar)
+        nextChar := Source.consumeChar(source);
+        lexeme := Token.lexemeForToken(TokenT.VerticalBar);
+        Symbol.Set(nextSym, TokenT.VerticalBar, line, column, lexeme)
 
     (* next symbol is invalid *)
     ELSE
-      Source.MarkLexeme(source, sym.line, sym.column);
-      next := Source.consumeChar(source);
-      sym.token := TokenT.Invalid;
-      Source.CopyLexeme(source, lexer^.dict, sym.lexeme);
+      (* consume symbol *)
+      Source.MarkLexeme(source, line, column);
+      nextChar := Source.consumeChar(source);
+      Source.CopyLexeme(source, lexeme);
+      (* pass invalid symbol *)
+      Symbol.Set(nextSym, TokenT.Invalid, line, column, lexeme);
+      (* increment error counter *)
       lexer^.errors := lexer^.errors + 1
-    END; (* CASE *)
+    END (* CASE *)
   END (* IF *);
 
-  (* store symbol for use by lookaheadSym *)
-  lexer^.nextSymbol := sym;
-
-  RETURN sym
-END consumeSym;
+  (* store symbol for use by LookaheadSym *)
+  lexer^.nextSymbol := nextSym
+END ConsumeSym;
 
 
 (* ---------------------------------------------------------------------------
- * public function Lexer.lookaheadSym(lexer)
+ * public procedure Lexer.LookaheadSym(lexer)
  *  returns current lookahead symbol
  * ---------------------------------------------------------------------------
  * pre-conditions:
@@ -386,11 +370,11 @@ END consumeSym;
  *  TO DO
  * ---------------------------------------------------------------------------
  *)
-PROCEDURE lookaheadSym ( lexer : Lexer ) : SymbolT;
+PROCEDURE LookaheadSym ( lexer : Lexer; VAR sym : SymbolT );
 
 BEGIN
-  RETURN lexer^.nextSymbol
-END lookaheadSym;
+   sym := lexer^.nextSymbol
+END LookaheadSym;
 
 
 (* ---------------------------------------------------------------------------
