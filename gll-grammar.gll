@@ -171,7 +171,11 @@ terminalDef :=
 /* Terminal Value */
 
 terminalValue :=
-  terminalExpression | '<platform-dependent>'
+  terminalExpression | predefinedLiteral
+  ;
+
+predefinedLiteral :=
+  '<TAB>' | '<EOL>' | '<EOF>'
   ;
 
 
@@ -350,7 +354,7 @@ CharCode :=
 
 /* End of File */
 
-EndOfFile := <platform dependent>;
+EndOfFile := <EOF> ;
 
 
 /*** Non-Semantic Symbols ***/
