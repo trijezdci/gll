@@ -1,4 +1,5 @@
-/* Grammar Tool for LL(1) Grammars
+/* ***************************************************************************
+ * Grammar Tool for LL(1) Grammars
  *
  * Copyright (C) 2015 Benjamin Kowarsch
  *
@@ -12,7 +13,7 @@
  *
  * grammar.gll
  *
- * EBNF grammar of GLL input files.
+ * EBNF of GLL grammar files.
  *
  * License
  *
@@ -26,6 +27,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with GLL.  If not, visit <http://www.gnu.org/licenses/>.
+ * ***************************************************************************
  */
 
 grammar gll;
@@ -129,7 +131,14 @@ literal :=
 /* Non-Terminal Definition */
 
 nonTerminalDef :=
-  NonTerminalIdent ':=' expression
+  NonTerminalIdent ':=' expressionList
+  ;
+
+
+/* Expression List */
+
+expressionList :=
+  expression ( ',' expression )*
   ;
 
 
@@ -171,12 +180,15 @@ terminalDef :=
 /* Terminal Value */
 
 terminalValue :=
-  terminalExpression | predefinedLiteral
+  terminalExprList | predefinedLiteral
   ;
 
-predefinedLiteral :=
-  '<TAB>' | '<EOL>' | '<EOF>'
-  ;
+
+/* Terminal Expression List */
+
+terminalExprList :=
+ terminalExpression ( ',' terminalExpression )*
+ ;
 
 
 /* Terminal Expression */
@@ -204,6 +216,13 @@ simpleTerminalTerm :=
 
 terminalFactor :=
   TerminalIdent | '(' terminalExpression ')'
+  ;
+
+
+/* Predefined Literal */
+
+predefinedLiteral :=
+  '<TAB>' | '<EOL>' | '<EOF>'
   ;
 
 
