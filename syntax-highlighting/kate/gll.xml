@@ -8,11 +8,11 @@
   GLL EBNF syntax highlighting profile for Kate
 
   Copyright (C) 2018 Benjamin Kowarsch
-  
-  Licensed under the MIT license <https://opensource.org/licenses/MIT>  
+
+  Licensed under the MIT license <https://opensource.org/licenses/MIT>
 
   The authoritative grammar for GLL EBNF is at:
-  
+
   https://github.com/trijezdci/gll/blob/master/gll-grammar.gll
   *****************************************************************************
 -->
@@ -42,7 +42,7 @@
     </list>
 
     <contexts>
-      <context attribute="Plain" lineEndContext="#stay">
+      <context name="gll" attribute="Plain" lineEndContext="#stay">
         <!-- BUG: first entry is ignored, leave Dummy at first position -->
         <keyword attribute="Dummy" context="#stay" String="workaround"/>
 
@@ -205,7 +205,7 @@
         <!-- Start of Comment -->
         <Detect2Chars attribute="Comment" context="CommentBody"
           char="/" char1="*" beginRegion="FoldableComment"/>
-        
+
         <!-- Start of Double-Quoted String Literal -->
         <DetectChar attribute="String"
           context="DoubleQuotedString" char="&quot;"/>
@@ -230,10 +230,15 @@
         <RegExpr attribute="CharCode"
           context="#stay" String="\b0u[A-F0-9]+\b"/>
 
+        <!-- Predefined Literals -->
+        <StringDetect attribute="Literal" context="#stay" String="&lt;TAB&gt;"/>
+        <StringDetect attribute="Literal" context="#stay" String="&lt;EOL&gt;"/>
+        <StringDetect attribute="Literal" context="#stay" String="&lt;EOF&gt;"/>
+
         <!-- Alternative -->
         <DetectChar
           attribute="Punctuation" context="#stay" char="|"/>
-          
+
         <!-- Kleene Operators -->
         <DetectChar
           attribute="Punctuation" context="#stay" char="?"/>
@@ -251,10 +256,6 @@
         <!-- Range -->
         <Detect2Chars
           attribute="Punctuation" context="#stay" char="." char1="."/>
-
-        <!-- Platform Dependent -->
-        <StringDetect attribute="Annotation"
-          context="#stay" String="&lt;platform dependent&gt;"/>
 
         <!-- End of Definition Body -->
         <DetectChar attribute="Punctuation"
@@ -335,14 +336,14 @@
       <!-- Style for Character Code Literals -->
       <itemData name="CharCode"
         defStyleNum="dsChar" bold="0" italic="0"/>
-      
+
+      <!-- Style for Predefined Literals -->
+      <itemData name="Literal"
+        defStyleNum="dsAlert" bold="0" italic="0"/>
+
       <!-- Style for Punctuation -->
       <itemData name="Punctuation"
         defStyleNum="dsOperator" bold="1" italic="0"/>
-
-      <!-- Style for Annotation -->
-      <itemData name="Annotation"
-        defStyleNum="dsAlert" bold="0" italic="0"/>
 
       <!-- Style for Pragmas -->
       <itemData name="Pragma"
