@@ -40,8 +40,12 @@ FROM String IMPORT StringT;
 FROM Diagnostic IMPORT DiagnosticT;
 
 
-(* Symbol to be returned by lexer *)
-
+(* ---------------------------------------------------------------------------
+ * Symbol type
+ * ---------------------------------------------------------------------------
+ * Returned by the lexer.
+ * ---------------------------------------------------------------------------
+ *)
 TYPE Symbol = RECORD
   token : TokenT;
   line, column : CARDINAL;
@@ -49,8 +53,53 @@ TYPE Symbol = RECORD
   diagnostic : DiagnosticT
 END; (* Symbol *)
 
-
 TYPE SymbolT = Symbol; (* for unqualified use *)
+
+
+(* ---------------------------------------------------------------------------
+ * Procedure Symbol.Init(sym, token, line, column, lex)
+ * ---------------------------------------------------------------------------
+ * Initialises the passed in symbol with the given parameters.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE Init
+  ( VAR sym : Symbol; t : TokenT; line, column : CARDINAL; lex : StringT );
+
+
+(* ---------------------------------------------------------------------------
+ * Function Symbol.token(sym)
+ * ---------------------------------------------------------------------------
+ * Returns the token of the passed in symbol.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE token ( VAR (*CONST*) sym : Symbol ) : TokenT;
+
+
+(* ---------------------------------------------------------------------------
+ * Function Symbol.line(sym)
+ * ---------------------------------------------------------------------------
+ * Returns the line number of the passed in symbol.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE line ( VAR (*CONST*) sym : Symbol ) : CARDINAL;
+
+
+(* ---------------------------------------------------------------------------
+ * Function Symbol.column(sym)
+ * ---------------------------------------------------------------------------
+ * Returns the column number of the passed in symbol.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE column ( VAR (*CONST*) sym : Symbol ) : CARDINAL;
+
+
+(* ---------------------------------------------------------------------------
+ * Function Symbol.lexeme(sym)
+ * ---------------------------------------------------------------------------
+ * Returns the lexeme of the passed in symbol.
+ * ---------------------------------------------------------------------------
+ *)
+PROCEDURE lexeme ( VAR (*CONST*) sym : Symbol ) : StringT;
 
 
 END Symbol.
